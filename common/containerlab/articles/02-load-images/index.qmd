@@ -205,6 +205,8 @@ topology:
     - endpoints: ["srl1:ethernet-1/1", "srl2:ethernet-1/1"]
 ```
 
+See it drawn in the [topology viewer](https://graphs.dynanet.dev/topology?example=srl).
+
 `srl1.cli` holds SR Linux CLI commands that Containerlab applies at boot (`srl2.cli` is the same with `10.0.12.2`):
 
 ```

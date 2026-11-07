@@ -142,6 +142,9 @@ topology:
     - endpoints: ["n1:eth1", "n2:eth1"]
 ```
 
+To see this lab drawn as a diagram, open it in the [topology viewer](https://graphs.dynanet.dev/topology?example=first). You can paste any
+topology file there; it is read in your browser and nothing is uploaded.
+
 ### Deploy
 
 Get the workshop files and deploy the lab:

@@ -99,6 +99,10 @@ topology:
     - endpoints: ["srl2:ethernet-1/1", "h2:eth1"]
 ```
 
+Open it in the [topology viewer](https://graphs.dynanet.dev/topology?example=routed) to see the lab drawn, with each node's kind, image
+and management address when you hover over it. Paste your own topology files there as you write them: it applies
+`kinds`, `defaults` and `groups`, and flags links to nodes you have not defined.
+
 ### Kinds
 
 `kinds` sets the image once for each kind of node, so the nodes only say which kind they are. To move every router
@@ -262,6 +266,7 @@ The script waits for the routers to finish starting before it checks them. Any `
 |---|---|
 | Rebuild from scratch after editing the file or a startup config | `containerlab deploy -t routed.clab.yml --reconfigure` |
 | Save the routers' running configs into the lab folder | `containerlab save -t routed.clab.yml` |
+| Draw the topology in your browser | Paste the file into the [topology viewer](https://graphs.dynanet.dev/topology) |
 | Draw the topology as a Mermaid diagram | `containerlab graph -t routed.clab.yml --mermaid` (writes `clab-routed/graph/routed.clab.mermaid`) |
 | Show the lab in a browser | `containerlab graph -t routed.clab.yml`, then open port 50080 on the host |
 
