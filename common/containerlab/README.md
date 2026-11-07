@@ -43,3 +43,8 @@ cloud/      material for running labs across cloud VMs (AWS)
 
 An Ubuntu 22.04, 24.04 or 26.04 LTS host (desktop, server or VM) with 4 vCPUs and 16 GB of RAM covers every lab. Some parts use network OS images
 that need a vendor account to download (for example Cisco XRd); the article for each part says which.
+
+## Licence
+
+The articles are licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); the lab files and scripts are licensed MIT.
+See [`LICENSE.md`](../../LICENSE.md) at the top of the repository.

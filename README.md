@@ -40,3 +40,8 @@ publish.sh                           maintainer only: publishes common/*/article
 - Test every lab on NetDev1 before publishing the article that uses it.
 - `draft: true` leaves an article out of the build entirely (Quarto renders it as a blank page).
 - All instructions target Ubuntu Linux (22.04, 24.04, 26.04 LTS).
+
+## Licence
+
+Articles and written material: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Labs and code: MIT.
+See [`LICENSE.md`](LICENSE.md) for which licence covers what.
