@@ -103,6 +103,11 @@ Open it in the [topology viewer](https://graphs.dynanet.dev/topology?example=rou
 and management address when you hover over it. Paste your own topology files there as you write them: it applies
 `kinds`, `defaults` and `groups`, and flags links to nodes you have not defined.
 
+You can also work the other way round: in the [topology designer](https://graphs.dynanet.dev/designer), draw the
+nodes and links, and it writes the topology file for you, with interface names filled in for each kind. Choose
+**Start from… → Routed lab (Part 3)** to open this lab there, or press **Edit in designer** in the viewer. It is a
+quick way to sketch a new lab; this part explains what each line of the file it produces means.
+
 ### Kinds
 
 `kinds` sets the image once for each kind of node, so the nodes only say which kind they are. To move every router
@@ -272,6 +277,7 @@ The script waits for the routers to finish starting before it checks them. Any `
 | Rebuild from scratch after editing the file or a startup config | `containerlab deploy -t routed.clab.yml --reconfigure` |
 | Save the routers' running configs into the lab folder | `containerlab save -t routed.clab.yml` |
 | Draw the topology in your browser | Paste the file into the [topology viewer](https://graphs.dynanet.dev/topology) |
+| Draw a new or changed lab and get its topology file | Use the [topology designer](https://graphs.dynanet.dev/designer), then **Download .clab.yml** |
 | Draw the topology as a Mermaid diagram | `containerlab graph -t routed.clab.yml --mermaid` (writes `clab-routed/graph/routed.clab.mermaid`) |
 | Show the lab in a browser | `containerlab graph -t routed.clab.yml`, then open port 50080 on the host |
 
