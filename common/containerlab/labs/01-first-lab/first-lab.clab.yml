@@ -1,0 +1,23 @@
+# First lab: two Linux nodes joined by one point-to-point link.
+# Used in Part 1 (Installing Containerlab) to check that the install works.
+#
+#   containerlab deploy -t first-lab.clab.yml
+#   docker exec -it clab-first-lab-n1 ping -c 3 10.0.12.2
+#   containerlab destroy -t first-lab.clab.yml
+name: first-lab
+
+topology:
+  nodes:
+    n1:
+      kind: linux
+      image: alpine:3
+      exec:
+        - ip addr add 10.0.12.1/30 dev eth1
+    n2:
+      kind: linux
+      image: alpine:3
+      exec:
+        - ip addr add 10.0.12.2/30 dev eth1
+
+  links:
+    - endpoints: ["n1:eth1", "n2:eth1"]

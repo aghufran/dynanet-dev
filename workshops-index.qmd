@@ -1,0 +1,8 @@
+---
+title: "Workshops"
+description: "Hands-on training material on network labs, automation and graphs."
+---
+
+| Workshop | What it covers |
+|---|---|
+| [Containerlab Workshop](containerlab/) | Build networking labs from containers, on one host or across cloud VMs |

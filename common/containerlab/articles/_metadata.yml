@@ -1,0 +1,4 @@
+# Settings shared by every workshop article (copied to site/workshops/containerlab/ by publish.sh).
+author: "Aghufran"
+# Comment thread (Isso) at the end of every article; the same embed the blog posts use.
+include-after-body: ../../posts/_comments.html

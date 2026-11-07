@@ -1,0 +1,6 @@
+# Containerlab lab directories created on deploy
+clab-*/
+# Quarto / editor leftovers
+.quarto/
+*_files/
+.DS_Store

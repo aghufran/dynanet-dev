@@ -1,0 +1,201 @@
+---
+title: "Part 1: Installing Containerlab"
+description: "Install Docker and Containerlab on an Ubuntu host, check that it works, and run a first two-node lab."
+date: 2026-11-07
+order: 1
+categories: [containerlab, workshop]
+---
+
+[Containerlab](https://containerlab.dev) builds network labs out of containers. You describe the routers, switches
+and hosts and the links between them in one YAML file. Containerlab starts the nodes, wires them together and gives
+each one a management address. One command brings the lab up, and one takes it down.
+
+This is the first part of the Containerlab workshop. All the instructions are for **Ubuntu Linux** (22.04, 24.04 or
+26.04 LTS, desktop or server). By the end of it you will have:
+
+- Docker and Containerlab installed on an Ubuntu host
+- your user able to run labs without typing `sudo`
+- a two-node lab deployed, tested and removed
+
+## What you need
+
+| Item | Requirement |
+|---|---|
+| Host | An Ubuntu 22.04, 24.04 or 26.04 LTS machine or VM, x86_64 or ARM64 |
+| Access | A user with `sudo` rights |
+| CPU | More than 1 vCPU. Most network OS containers need at least one core each while booting |
+| Memory | Depends on the lab. A Linux node needs a few MB; a Cisco XRd router about **2.5 GB**; Nokia SR Linux and Arista cEOS about 1–2 GB each |
+| IPv6 | Must not be disabled in the kernel |
+| Internet | To download packages and container images |
+
+For this workshop, a host with **4 vCPUs and 16 GB of RAM** is enough for every lab.
+
+::: {.callout-note}
+## How big a lab can one host run?
+On a mini PC with a Ryzen 7 255 and 64 GB of RAM, a 15-router Cisco XRd lab uses about 34 GB of memory and runs
+comfortably. Memory, not CPU, is usually what limits how many nodes fit on one host.
+:::
+
+## Option A: the quick setup script
+
+On a fresh Ubuntu 22.04 or 24.04 host, one command installs everything: Docker CE, Docker Compose, Containerlab and
+the GitHub `gh` CLI.
+
+```bash
+curl -sL https://containerlab.dev/setup | sudo -E bash -s "all"
+```
+
+The script also raises the SSH server's maximum login attempts, which helps when you SSH into many lab nodes. To skip
+that change, run `export SETUP_SSHD="false"` first.
+
+Then log out and back in (or run `newgrp docker`) so that your user's new group membership takes effect, and go to
+[Check the installation](#check-the-installation).
+
+The script is tested on Ubuntu up to 24.04. On Ubuntu 26.04, use Option B.
+
+## Option B: step by step
+
+These steps work on every supported Ubuntu release, and are the ones used on the workshop host (Ubuntu 26.04). Each
+step shows what is being installed, so use this route if you want to know exactly what changed on your system.
+
+### 1. Install Docker
+
+Ubuntu's own `docker.io` package is enough for Containerlab:
+
+```bash
+sudo apt update
+sudo apt install -y docker.io docker-compose-v2
+sudo usermod -aG docker "$USER"
+```
+
+The last command lets your user run `docker` without `sudo`. If you prefer Docker's own packages (`docker-ce`),
+follow [Docker's install guide](https://docs.docker.com/engine/install/ubuntu/) instead; either works.
+
+### 2. Add the Containerlab package repository and install
+
+Containerlab is published in its own APT repository:
+
+```bash
+echo "deb [trusted=yes] https://netdevops.fury.site/apt/ /" | \
+  sudo tee /etc/apt/sources.list.d/netdevops.list
+
+sudo apt update
+sudo apt install -y containerlab
+```
+
+Installing from the repository means later upgrades arrive with your normal `apt upgrade`.
+
+### 3. Log out and back in
+
+The installer adds your user to a group called `clab_admins`, and step 1 added you to `docker`. New group
+memberships only apply to new login sessions, so log out and log back in.
+
+::: {.callout-warning}
+## Still missing the groups after logging back in?
+On a desktop session, background user services can survive a logout and keep the old group list. If
+`id -nG` still does not show `docker` and `clab_admins` after logging back in, reboot the host.
+:::
+
+## Check the installation
+
+```bash
+containerlab version
+id -nG
+docker ps
+```
+
+You should see:
+
+- a version banner from `containerlab version` (0.82 or newer at the time of writing)
+- `docker` and `clab_admins` in the output of `id -nG`
+- an empty table from `docker ps`, not a "permission denied" error
+
+::: {.callout-tip}
+## Why no sudo?
+Containerlab is installed as a root-owned SUID binary. Members of `clab_admins` can run commands that change the
+host, such as `deploy` and `destroy`. Everyone else can only run read-only commands such as `inspect`. Membership is
+effectively root access to the host, so add only people you trust.
+:::
+
+## Run a first lab
+
+The workshop repository has a two-node lab to prove that everything works: two small Alpine Linux containers joined by
+one link.
+
+```yaml
+name: first-lab
+
+topology:
+  nodes:
+    n1:
+      kind: linux
+      image: alpine:3
+      exec:
+        - ip addr add 10.0.12.1/30 dev eth1
+    n2:
+      kind: linux
+      image: alpine:3
+      exec:
+        - ip addr add 10.0.12.2/30 dev eth1
+
+  links:
+    - endpoints: ["n1:eth1", "n2:eth1"]
+```
+
+Get the workshop files and deploy the lab:
+
+```bash
+git clone https://github.com/aghufran/course.git
+cd course/common/containerlab/labs/01-first-lab
+containerlab deploy -t first-lab.clab.yml
+```
+
+Containerlab pulls the Alpine image, starts both nodes, creates the link and prints a table of the nodes with their
+management addresses. Each node is a container named `clab-<lab name>-<node name>`.
+
+Ping across the link from `n1` to `n2`:
+
+```bash
+docker exec -it clab-first-lab-n1 ping -c 3 10.0.12.2
+```
+
+Three replies mean the link works. Check what is running, then remove the lab:
+
+```bash
+containerlab inspect --all
+containerlab destroy -t first-lab.clab.yml
+```
+
+`destroy` removes the containers and the link. The folder `clab-first-lab/` next to the topology file holds the lab's
+generated files and is left in place; it is recreated on the next deploy.
+
+## Upgrade, pin a version or uninstall
+
+| Task | Command |
+|---|---|
+| Upgrade to the latest release | `sudo -E containerlab version upgrade`, or `sudo apt update && sudo apt install containerlab` |
+| List the versions available | `apt-cache madison containerlab` |
+| Install a specific version | `sudo apt install containerlab=0.82.0` |
+| Stop it upgrading (and allow again) | `sudo apt-mark hold containerlab` (`sudo apt-mark unhold containerlab`) |
+| Uninstall | `sudo apt remove containerlab` |
+
+Everyone in a workshop should run the same Containerlab version, so install the same version on every host and hold it.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `permission denied ... /var/run/docker.sock` | Your user is not in the `docker` group yet. Run `sudo usermod -aG docker $USER`, then log out and in (or reboot) |
+| `containerlab deploy` asks for root or refuses to run | Your user is not in `clab_admins` yet. Run `sudo usermod -aG clab_admins $USER`, then log out and in |
+| `id -nG` still shows the old groups | Reboot. A background user session kept the old list |
+| `apt` cannot find `containerlab` | Check `/etc/apt/sources.list.d/netdevops.list` exists, then run `sudo apt update` |
+| Deploy fails with errors that mention IPv6 | IPv6 is disabled in the kernel (for example `ipv6.disable=1` on the kernel command line). Re-enable it; Containerlab expects it |
+| Image pull fails | Check the host's internet access and DNS. Behind a proxy, configure Docker's proxy settings |
+
+## Next
+
+Part 2 covers loading network operating system images, such as Cisco XRd, Nokia SR Linux and Arista cEOS, into Docker
+so that Containerlab can use them.
+
+**Sources:** [Containerlab installation guide](https://containerlab.dev/install/) ·
+[Containerlab quick start](https://containerlab.dev/quickstart/)

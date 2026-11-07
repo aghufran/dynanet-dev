@@ -1,0 +1,27 @@
+---
+title: "Containerlab Workshop"
+description: "Build networking labs from containers: install Containerlab, load network OS images, write topologies, connect to nodes, and scale out across cloud VMs."
+listing:
+  contents: "*/index.qmd"
+  sort: "order"
+  type: table
+  fields: [order, title, description]
+  field-display-names:
+    order: "Part"
+  sort-ui: false
+  filter-ui: false
+---
+
+A hands-on workshop on using [Containerlab](https://containerlab.dev) for networking labs. Work through the parts in
+order. The lab files are in the workshop repository:
+[github.com/aghufran/course](https://github.com/aghufran/course/tree/main/common/containerlab), in `common/containerlab`.
+
+| Part | Topic | Status |
+|---|---|---|
+| 1 | Installing Containerlab | Available |
+| 2 | Loading network OS images into Docker | Coming soon |
+| 3 | Writing a lab topology file | Coming soon |
+| 4 | Connecting to the nodes in a lab | Coming soon |
+| 5 | Running a lab across several cloud VMs (AWS) | Coming soon |
+
+## Available parts
