@@ -22,7 +22,7 @@ order. The lab files are in the workshop repository:
 | 2 | Loading network OS images into Docker | Available |
 | 3 | Writing a lab topology file | Available |
 | 4 | Connecting to the nodes in a lab | Available |
-| 5 | Running a lab across several cloud VMs (AWS) | Coming soon |
+| 5 | Running a lab across several hosts (VXLAN) | Available |
 
 To see any lab in the workshop, or one of your own, as a diagram, paste its topology file into the
 [topology viewer](https://graphs.dynanet.dev/topology).

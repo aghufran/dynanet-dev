@@ -267,7 +267,7 @@ containerlab destroy -t routed.clab.yml
 
 ## Next
 
-Part 5 moves the lab to the cloud: running one lab across several AWS virtual machines.
+Part 5 spreads a lab across several hosts, joined by VXLAN tunnels: first on one machine, then on separate machines or cloud VMs.
 
 **Sources:** [containerlab exec](https://containerlab.dev/cmd/exec/) ·
 [Network wiring and external access](https://containerlab.dev/manual/network/) ·

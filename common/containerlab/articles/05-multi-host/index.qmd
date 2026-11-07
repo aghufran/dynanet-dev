@@ -1,0 +1,227 @@
+---
+title: "Part 5: Running a lab across several hosts"
+description: "Split one lab across two hosts and join the halves with a VXLAN tunnel: first with two lab-host containers on one Ubuntu machine, then on two real machines or cloud VMs."
+date: 2026-11-07
+order: 5
+categories: [containerlab, workshop]
+---
+
+A single host runs out of memory long before you run out of ideas for labs. The answer is to spread one lab across
+several hosts: each host runs part of the topology, and the links that cross between hosts are carried by **VXLAN**
+tunnels. To the routers, a VXLAN link looks exactly like a cable.
+
+This part builds the routed lab from [Part 3](../03-topology-file/) again, split across two hosts. You first run both
+hosts as containers on your own Ubuntu machine, so you need nothing new. Then you see how the same topology files run
+on two separate machines or cloud VMs.
+
+## The lab you will build
+
+```
+ lab-host-1  192.168.100.11                       lab-host-2  192.168.100.12
+ ┌──────────────────────────┐                     ┌──────────────────────────┐
+ │  h1 ──── srl1            │   VXLAN VNI 100     │            srl2 ──── h2  │
+ │         ethernet-1/2 ════╪═════ UDP 4789 ══════╪═ ethernet-1/2            │
+ └──────────────────────────┘                     └──────────────────────────┘
+          underlay network  192.168.100.0/24
+```
+
+| Host | Address | Lab | Nodes |
+|---|---|---|---|
+| lab-host-1 | 192.168.100.11 | site1 | srl1 (Nokia SR Linux), h1 (Alpine Linux) |
+| lab-host-2 | 192.168.100.12 | site2 | srl2 (Nokia SR Linux), h2 (Alpine Linux) |
+
+The routers and hosts use the same addresses and static routes as in Part 3: h1 is 192.168.1.10, h2 is 192.168.2.10,
+and the srl1–srl2 link is 10.0.12.0/30. The only difference is that this link now crosses between hosts.
+
+The **underlay** is the network the hosts use to reach each other: here a Docker network, in the cloud the VPC. The
+**overlay** is the lab itself, carried inside the tunnel.
+
+## How a VXLAN link works
+
+Each host runs its own Containerlab lab with its own topology file. The cross-host link appears in both files, once
+from each side. This is the link in `site1.clab.yml`:
+
+```yaml
+    - type: vxlan
+      endpoint:
+        node: srl1
+        interface: ethernet-1/2
+      remote: 192.168.100.12
+      vni: 100
+      dst-port: 4789
+      mtu: 1500
+```
+
+`site2.clab.yml` has the mirror image: `node: srl2`, `remote: 192.168.100.11`, and the same VNI and port.
+
+| Field | Meaning | Must match on both sides? |
+|---|---|---|
+| `endpoint` | The local node and interface the tunnel connects to | No: each side names its own node |
+| `remote` | The underlay address of the **other** host | No: each side points at the other |
+| `vni` | The VXLAN network identifier, which tells tunnels apart. Use a different VNI for each cross-host link | **Yes** |
+| `dst-port` | The UDP port of the tunnel; 4789 is the standard VXLAN port | **Yes** |
+| `mtu` | The MTU of the link (see below) | Yes |
+
+Containerlab creates a VXLAN interface on the host and connects it to the node's interface. Packets that srl1 sends
+out of `ethernet-1/2` are wrapped in UDP and sent to 192.168.100.12, where lab-host-2 unwraps them and hands them to
+srl2's `ethernet-1/2`.
+
+### MTU: the 50 bytes VXLAN adds
+
+VXLAN wraps every frame in new headers, which adds 50 bytes. On an underlay that carries 1500-byte packets, the lab
+traffic inside the tunnel must therefore stay at 1450 bytes or less. This lab sets that in three places:
+
+| Where | Setting | Why |
+|---|---|---|
+| The VXLAN link | `mtu: 1500` | SR Linux ports refuse an MTU below 1500, and Containerlab would otherwise use 1450 |
+| The routers' tunnel interface | `set / interface ethernet-1/2 subinterface 0 ip-mtu 1450` in each router's startup config | The router only sends packets that fit in the tunnel |
+| The end hosts | `ip link set eth1 mtu 1450` in each host's `exec` list | Hosts split large packets themselves instead of having them dropped |
+
+If your underlay carries larger packets (cloud networks often allow 9000-byte "jumbo" packets inside one VPC), you
+can raise these values, but the rule stays the same: overlay MTU = underlay MTU − 50.
+
+## Option 1: two lab hosts on one machine
+
+A **lab host** here is a privileged container with its own Docker engine and Containerlab inside, built from
+`host/Dockerfile`: Ubuntu 24.04 plus `docker.io` and `containerlab`. Two of them, on their own Docker network, behave
+like two separate servers. Your machine only needs Docker; Containerlab runs inside the lab hosts.
+
+You need about **6 GB of free memory** and 4 vCPUs.
+
+### Deploy
+
+```bash
+cd ~/dynanet-dev && git pull
+cd ~/dynanet-dev/common/containerlab/labs/05-multihost
+./up.sh
+```
+
+`up.sh` takes one to two minutes and shows each step:
+
+```
+1/5 Building the lab-host image (Ubuntu + Docker + Containerlab)
+2/5 Creating the underlay network clab-underlay (192.168.100.0/24)
+3/5 Starting lab-host-1 (192.168.100.11) and lab-host-2 (192.168.100.12)
+4/5 Getting the node images into each lab host
+5/5 Deploying site1 on lab-host-1 and site2 on lab-host-2
+```
+
+It ends with a table of the four nodes, all `running`. Each lab host gets the SR Linux and Alpine images from your
+machine if you already have them, and downloads them otherwise.
+
+To run a command on a lab host, use `docker exec lab-host-1 <command>`. To run one inside a lab node, add a second
+`docker exec`: the first enters the lab host, the second enters the node.
+
+### Verify
+
+| Step | Command | You should see |
+|---|---|---|
+| 1. Lab hosts | `docker ps --format '{{.Names}}'` | `lab-host-1` and `lab-host-2` among the names |
+| 2. Underlay | `docker exec lab-host-1 ping -c 2 192.168.100.12` | `2 packets transmitted, 2 received, 0% packet loss` |
+| 3. Lab on host 1 | `docker exec lab-host-1 containerlab inspect --all` | `clab-site1-srl1` and `clab-site1-h1`, both `running` |
+| 4. Tunnel | `docker exec lab-host-1 docker exec clab-site1-srl1 sr_cli "ping 10.0.12.2 network-instance default -c 3"` | `3 packets transmitted, 3 received, 0% packet loss` |
+| 5. End to end | `docker exec lab-host-1 docker exec clab-site1-h1 ping -c 3 192.168.2.10` | `3 packets transmitted, 3 packets received, 0% packet loss` |
+| 6. Path | `docker exec lab-host-1 docker exec clab-site1-h1 traceroute -n 192.168.2.10` | three hops: `192.168.1.1`, `10.0.12.2`, `192.168.2.10` |
+
+Step 4 is the important one: srl1 reaches srl2's address across the tunnel, so the two routers are effectively
+cabled together although they run on different hosts.
+
+To see the tunnel itself, watch the underlay while you ping. In one terminal:
+
+```bash
+docker exec lab-host-1 tcpdump -ni eth0 udp port 4789
+```
+
+In a second terminal, run step 5 again. The first terminal shows the packets between the hosts, wrapped in VXLAN:
+
+```
+IP 192.168.100.11.58443 > 192.168.100.12.4789: VXLAN, flags [I] (0x08), vni 100
+IP 192.168.100.12.58443 > 192.168.100.11.4789: VXLAN, flags [I] (0x08), vni 100
+```
+
+Stop it with Ctrl-C. Or run all the checks at once:
+
+```bash
+./verify.sh
+```
+
+```
+Checking the two-host lab
+  PASS  lab-host-1 is running
+  PASS  lab-host-2 is running
+  PASS  underlay: lab-host-1 reaches lab-host-2 (192.168.100.11 -> .12)
+  PASS  srl1 is running on lab-host-1
+  PASS  h1 is running on lab-host-1
+  PASS  srl2 is running on lab-host-2
+  PASS  h2 is running on lab-host-2
+  PASS  srl1 ethernet-1/1 is up
+  PASS  srl1 ethernet-1/2 is up
+  PASS  srl2 ethernet-1/1 is up
+  PASS  srl2 ethernet-1/2 is up
+  PASS  srl1 pings srl2 across the VXLAN tunnel (10.0.12.1 -> 10.0.12.2)
+  PASS  h1 (lab-host-1) pings h2 (lab-host-2), 0% loss
+  PASS  h1 to h2 path is srl1 -> srl2 -> h2 (192.168.1.1 10.0.12.2 192.168.2.10)
+  PASS  underlay carries the traffic as VXLAN, VNI 100, UDP 4789
+  PASS  large packets (3000 bytes) cross the tunnel
+
+All checks passed.
+```
+
+### Remove the lab
+
+```bash
+./down.sh
+```
+
+This removes both labs, both lab hosts and the underlay network. The lab-host image stays for next time; add
+`--image` to delete it too.
+
+## Option 2: two separate machines or cloud VMs
+
+The `site1` and `site2` files work unchanged on two real hosts, apart from the `remote:` addresses. Use two Ubuntu
+machines or VMs that can reach each other, such as two cloud instances in the same network.
+
+1. **Install Docker and Containerlab on both**, as in [Part 1](../01-install-containerlab/), and get the SR Linux
+   image on both, as in [Part 2](../02-load-images/).
+2. **Note each host's address on the underlay**, for example with `ip -4 addr`. In the cloud, use the private
+   addresses, not the public ones.
+3. **Copy the lab folders**: `site1` to the first host and `site2` to the second (both are in
+   `~/dynanet-dev/common/containerlab/labs/05-multihost/`).
+4. **Point each tunnel at the other host**: in `site1.clab.yml`, set `remote:` to the second host's address; in
+   `site2.clab.yml`, set it to the first host's address.
+5. **Allow the tunnel through the firewall** on both hosts: UDP port 4789 from the other host. With Ubuntu's firewall:
+   `sudo ufw allow from <other host address> to any port 4789 proto udp`. In AWS, add an inbound rule for UDP 4789
+   from the other instance to the security group.
+6. **Deploy** each half on its own host: `containerlab deploy -t site1.clab.yml` on the first, and
+   `containerlab deploy -t site2.clab.yml` on the second.
+7. **Verify** with the same commands as Option 1, without the `docker exec lab-host-N` prefix. For example, on the
+   first host: `docker exec clab-site1-h1 ping -c 3 192.168.2.10`, and `sudo tcpdump -ni <underlay interface> udp
+   port 4789` to see the tunnel.
+
+Containerlab does not need the hosts to be on the same subnet: the underlay only has to deliver UDP between the two
+`remote:` addresses. If there is NAT between the hosts, the tunnel will not work; use addresses that reach each other
+directly.
+
+To add more cross-host links, add one `type: vxlan` link per pair of interfaces, each with its own VNI.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Deploy fails with `Error in /interface[name=ethernet-1/2]/mtu` | The VXLAN link has no `mtu`, or one below 1500. SR Linux needs `mtu: 1500` on the link; set the 1450 limit with `ip-mtu` in the router config instead |
+| Step 4 fails: srl1 cannot reach srl2 | The two sides do not match. Check both use the same `vni` and `dst-port`, and that each `remote:` is the other host's underlay address |
+| Step 2 fails: the hosts cannot reach each other | The underlay is broken. Option 1: run `./up.sh` again. Option 2: check addresses, routing and firewalls between the hosts |
+| Small pings work but large ones fail | An MTU is too large somewhere. Check the routers' `ip-mtu 1450` and the hosts' `mtu 1450`, or the underlay's MTU in the cloud |
+| `tcpdump` shows packets leaving one host but none arriving at the other | A firewall or security group is blocking UDP 4789 |
+| `./up.sh` stops at step 1 | The lab-host image failed to build, usually for lack of internet access. The script prints the build log |
+| The topology viewer does not draw the VXLAN link | The viewer shows one host's lab at a time and lists VXLAN links as not drawn. Paste `site1.clab.yml` or `site2.clab.yml` to see each half |
+
+## Where to go next
+
+You now have the whole workflow: install Containerlab, load network OS images, describe a lab in a topology file,
+connect to its nodes, and spread it across hosts. From here, try replacing SR Linux with another network OS from
+Part 2, add a third site with a second VNI, or run your own lab design across two cloud VMs.
+
+**Sources:** [Topology definition: VXLAN links](https://containerlab.dev/manual/topo-def-file/) ·
+[Containerlab multi-node labs](https://containerlab.dev/manual/multi-node/) ·
+[RFC 7348: VXLAN](https://datatracker.ietf.org/doc/html/rfc7348)

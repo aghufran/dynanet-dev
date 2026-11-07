@@ -1,0 +1,37 @@
+# Part 5 (multi-host labs): the half of the routed lab that runs on lab-host-2.
+#
+#   lab-host-1 (192.168.100.11)                lab-host-2 (192.168.100.12)
+#   h1 ---- srl1 ==== VXLAN VNI 100 ==== srl2 ---- h2
+name: site2
+
+topology:
+  kinds:
+    nokia_srlinux:
+      image: ghcr.io/nokia/srlinux:26.7.2
+    linux:
+      image: alpine:3
+
+  nodes:
+    srl2:
+      kind: nokia_srlinux
+      mgmt-ipv4: 172.20.20.12
+      startup-config: configs/srl2.cli
+    h2:
+      kind: linux
+      mgmt-ipv4: 172.20.20.22
+      exec:
+        - ip link set eth1 mtu 1450     # match the VXLAN tunnel
+        - ip addr add 192.168.2.10/24 dev eth1
+        - ip route add 192.168.1.0/24 via 192.168.2.1
+
+  links:
+    - endpoints: ["srl2:ethernet-1/1", "h2:eth1"]
+    # The cross-host link: a VXLAN tunnel to lab-host-1. Same VNI and port on both sides.
+    - type: vxlan
+      endpoint:
+        node: srl2
+        interface: ethernet-1/2
+      remote: 192.168.100.11
+      vni: 100
+      dst-port: 4789
+      mtu: 1500      # SR Linux ports need at least 1500; the router config sets IP MTU 1450
