@@ -1,6 +1,8 @@
 ---
 title: "Part 1: Installing Containerlab"
 description: "Install Docker and Containerlab on an Ubuntu host, check that it works, and run a first two-node lab."
+image: ../social-card.png
+image-alt: "Containerlab workshop on dynanet.dev"
 date: 2026-11-07
 order: 1
 categories: [containerlab, workshop]

@@ -1,6 +1,8 @@
 ---
 title: "Part 5: Running a lab across several hosts"
 description: "Split one lab across two hosts and join the halves with a VXLAN tunnel: first with two lab-host containers on one Ubuntu machine, then on two real machines or cloud VMs."
+image: ../social-card.png
+image-alt: "Containerlab workshop on dynanet.dev"
 date: 2026-11-07
 order: 5
 categories: [containerlab, workshop]

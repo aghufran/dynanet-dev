@@ -1,6 +1,8 @@
 ---
 title: "Part 2: Loading network OS images"
 description: "Get router and switch images into Docker so Containerlab can use them: pull Nokia SR Linux, import Arista cEOS, load Cisco XRd, and build VM-based images with vrnetlab."
+image: ../social-card.png
+image-alt: "Containerlab workshop on dynanet.dev"
 date: 2026-11-07
 order: 2
 categories: [containerlab, workshop]

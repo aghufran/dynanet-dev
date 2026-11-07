@@ -1,6 +1,8 @@
 ---
 title: "Part 3: Writing a topology file"
 description: "Describe a lab in one YAML file: nodes, kinds, links, management addresses and startup configurations. Build a routed four-node lab and verify it."
+image: ../social-card.png
+image-alt: "Containerlab workshop on dynanet.dev"
 date: 2026-11-07
 order: 3
 categories: [containerlab, workshop]

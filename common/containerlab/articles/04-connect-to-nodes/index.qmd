@@ -1,6 +1,8 @@
 ---
 title: "Part 4: Connecting to the nodes in a lab"
 description: "Reach lab nodes by SSH, docker exec and containerlab exec; connect from another machine with a jump host, a route or a published port; and drive the lab from Python with the inventory Containerlab generates."
+image: ../social-card.png
+image-alt: "Containerlab workshop on dynanet.dev"
 date: 2026-11-07
 order: 4
 categories: [containerlab, workshop]

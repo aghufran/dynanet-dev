@@ -1,6 +1,8 @@
 ---
 title: "Containerlab Workshop"
 description: "Build networking labs from containers: install Containerlab, load network OS images, write topologies, connect to nodes, and scale out across cloud VMs."
+image: social-card.png
+image-alt: "Containerlab workshop on dynanet.dev"
 listing:
   contents: "*/index.qmd"
   sort: "order"
