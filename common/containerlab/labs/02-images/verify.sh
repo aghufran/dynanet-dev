@@ -16,6 +16,14 @@ for n in srl1 srl2; do
 done
 (( fails == 0 )) || { echo; echo "Deploy the lab first: containerlab deploy -t srl-pair.clab.yml"; exit 1; }
 
+# SR Linux keeps starting for a short while after the deploy finishes; wait for both CLIs (up to 90 s).
+for n in srl1 srl2; do
+    for _ in $(seq 1 18); do
+        cli "$n" "show version" | grep -q 'Software Version' && break
+        echo "  ....  waiting for $n to finish starting"; sleep 5
+    done
+done
+
 ver=$(cli srl1 "show version" | awk -F': ' '/Software Version/ {print $2}')
 [[ -n $ver ]] && pass "srl1 answers the CLI: SR Linux $ver" || fail "srl1 does not answer the CLI yet (wait a minute and retry)"
 

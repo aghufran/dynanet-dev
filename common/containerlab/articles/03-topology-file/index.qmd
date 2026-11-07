@@ -1,0 +1,294 @@
+---
+title: "Part 3: Writing a topology file"
+description: "Describe a lab in one YAML file: nodes, kinds, links, management addresses and startup configurations. Build a routed four-node lab and verify it."
+date: 2026-11-07
+order: 3
+categories: [containerlab, workshop]
+---
+
+A Containerlab lab is one YAML file, called the topology file. It lists the nodes, says what each one runs, and
+describes the cables between them. Containerlab reads it and builds the whole lab with one command.
+
+In this part you build a small routed network: two Nokia SR Linux routers with a Linux host on each side. Then you
+verify that the hosts can reach each other through both routers. It assumes you finished
+[Part 1](../01-install-containerlab/) and [Part 2](../02-load-images/), and have the SR Linux image.
+
+## The lab you will build
+
+```
+  h1 ─────────── srl1 ─────────── srl2 ─────────── h2
+     192.168.1.0/24    10.0.12.0/30    192.168.2.0/24
+```
+
+| Node | Kind | Management address | Data addresses |
+|---|---|---|---|
+| srl1 | Nokia SR Linux router | 172.20.20.11 | 192.168.1.1 (to h1), 10.0.12.1 (to srl2) |
+| srl2 | Nokia SR Linux router | 172.20.20.12 | 10.0.12.2 (to srl1), 192.168.2.1 (to h2) |
+| h1 | Alpine Linux host | 172.20.20.21 | 192.168.1.10, gateway 192.168.1.1 |
+| h2 | Alpine Linux host | 172.20.20.22 | 192.168.2.10, gateway 192.168.2.1 |
+
+Each router has a static route to the far host network, so traffic from h1 to h2 crosses srl1 and srl2.
+
+## The parts of a topology file
+
+```yaml
+name: routed            # lab name: used in container names and the lab folder
+
+mgmt:                   # optional: the management network (default shown below)
+  network: clab
+  ipv4-subnet: 172.20.20.0/24
+
+topology:
+  defaults: {}          # optional: settings for every node
+  kinds: {}             # optional: settings for every node of a kind
+  groups: {}            # optional: named sets of settings that nodes can use
+  nodes: {}             # the nodes
+  links: []             # the cables between them
+```
+
+| Key | Required | What it does |
+|---|---|---|
+| `name` | Yes | Names the lab. Containers are called `clab-<name>-<node>`, and generated files go in a folder `clab-<name>`. Avoid dashes in the name |
+| `prefix` | No | Changes the `clab` part of container names; `""` uses bare node names |
+| `mgmt` | No | Sets the management network. Leave it out to use the default `clab` network, 172.20.20.0/24 |
+| `topology.nodes` | Yes | One entry per node |
+| `topology.links` | No | One entry per cable |
+| `topology.kinds`, `defaults`, `groups` | No | Shared settings, so you do not repeat yourself |
+
+## The lab's topology file
+
+This is `routed.clab.yml` from the workshop repository:
+
+```yaml
+name: routed
+
+topology:
+  # Settings shared by every node of a kind.
+  kinds:
+    nokia_srlinux:
+      image: ghcr.io/nokia/srlinux:latest
+    linux:
+      image: alpine:3
+
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      mgmt-ipv4: 172.20.20.11
+      startup-config: configs/srl1.cli
+    srl2:
+      kind: nokia_srlinux
+      mgmt-ipv4: 172.20.20.12
+      startup-config: configs/srl2.cli
+
+    h1:
+      kind: linux
+      mgmt-ipv4: 172.20.20.21
+      exec:
+        - ip addr add 192.168.1.10/24 dev eth1
+        - ip route add 192.168.2.0/24 via 192.168.1.1
+    h2:
+      kind: linux
+      mgmt-ipv4: 172.20.20.22
+      exec:
+        - ip addr add 192.168.2.10/24 dev eth1
+        - ip route add 192.168.1.0/24 via 192.168.2.1
+
+  links:
+    - endpoints: ["h1:eth1", "srl1:ethernet-1/1"]
+    - endpoints: ["srl1:ethernet-1/2", "srl2:ethernet-1/2"]
+    - endpoints: ["srl2:ethernet-1/1", "h2:eth1"]
+```
+
+### Kinds
+
+`kinds` sets the image once for each kind of node, so the nodes only say which kind they are. To move every router
+to a new SR Linux release, you change one line.
+
+### Nodes
+
+Each node needs a `kind`. The other settings used here:
+
+| Setting | Used for |
+|---|---|
+| `kind` | What the node is: `nokia_srlinux`, `cisco_xrd`, `arista_ceos`, `linux` and so on. It decides interface names, login and how configuration is applied |
+| `image` | The Docker image (here inherited from `kinds`) |
+| `mgmt-ipv4` | A fixed management address, so it is the same every time you deploy |
+| `startup-config` | A configuration file the node loads at boot. The path is relative to the topology file |
+| `exec` | Commands run inside the container once it has started; handy for Linux hosts |
+
+Other settings you will meet:
+
+| Setting | Used for |
+|---|---|
+| `type` | A model within a kind, such as an SR Linux chassis type |
+| `binds` | Mount files or folders from the host into the node, as `host-path:container-path` |
+| `ports` | Publish a node's port on the host, as in `docker run -p` |
+| `env` | Environment variables for the node |
+| `startup-delay` | Wait this many seconds before starting the node; useful for big labs of heavy nodes |
+| `group` | Take settings from a named entry in `topology.groups` |
+
+When a setting appears at several levels, the most specific wins: **node**, then **group**, then **kind**, then
+**defaults**.
+
+### The startup configurations
+
+`configs/srl1.cli` holds SR Linux CLI commands. Containerlab applies them when the router boots:
+
+```
+set / interface ethernet-1/1 admin-state enable
+set / interface ethernet-1/1 subinterface 0 ipv4 admin-state enable
+set / interface ethernet-1/1 subinterface 0 ipv4 address 192.168.1.1/24
+set / interface ethernet-1/2 admin-state enable
+set / interface ethernet-1/2 subinterface 0 ipv4 admin-state enable
+set / interface ethernet-1/2 subinterface 0 ipv4 address 10.0.12.1/30
+set / network-instance default type default
+set / network-instance default interface ethernet-1/1.0
+set / network-instance default interface ethernet-1/2.0
+set / network-instance default next-hop-groups group to-srl2 nexthop 1 ip-address 10.0.12.2
+set / network-instance default static-routes route 192.168.2.0/24 next-hop-group to-srl2
+```
+
+`configs/srl2.cli` is the mirror image: its own addresses, and a route to 192.168.1.0/24 through 10.0.12.1.
+
+### Links
+
+Each link is one cable, written as two `node:interface` endpoints. Use the interface names of each node's kind:
+`ethN` for Linux, `ethernet-1/N` for SR Linux, `Gi0-0-0-N` for XRd. Interface `eth0` is always the management
+interface, so data links start at `eth1`.
+
+A link can also connect a node to the host itself, which is useful for reaching a lab from outside:
+
+```yaml
+  links:
+    - type: host
+      endpoint:
+        node: srl1
+        interface: ethernet-1/10
+      host-interface: srl1-host
+```
+
+### Management network
+
+Every node gets an `eth0` on a Docker network called `clab`, 172.20.20.0/24 by default, and an entry in the host's
+`/etc/hosts`. That is how you reach a node by name, for example `ssh admin@clab-routed-srl1`.
+
+If you give one node a fixed `mgmt-ipv4`, give every node one, so that Docker never hands out an address you have
+reserved. To use a different range, add an `mgmt` block:
+
+```yaml
+mgmt:
+  network: lab-mgmt
+  ipv4-subnet: 172.30.30.0/24
+```
+
+### Variables
+
+A topology file can read environment variables. This is a simple way to let everyone in a workshop run the same
+image version:
+
+```yaml
+  kinds:
+    nokia_srlinux:
+      image: ghcr.io/nokia/srlinux:${SRL_VERSION:=latest}
+```
+
+`SRL_VERSION=26.7.2 containerlab deploy -t routed.clab.yml` then uses version 26.7.2, and plain
+`containerlab deploy` uses `latest`.
+
+## Deploy
+
+If you cloned the repository earlier, run `git pull` inside it first to get the Part 3 files.
+
+```bash
+cd course/common/containerlab/labs/03-topology
+containerlab deploy -t routed.clab.yml
+```
+
+The deploy takes about 20 seconds. It ends with a table of the four nodes, all `running`, with the management
+addresses from the file.
+
+Containerlab also creates:
+
+| What | Where |
+|---|---|
+| The lab folder: node configs, an Ansible inventory, a Nornir inventory and `topology-data.json` | `clab-routed/` next to the topology file |
+| Host names for the nodes | a `CLAB-routed` block in `/etc/hosts` |
+| SSH settings for the nodes | `/etc/ssh/ssh_config.d/clab-routed.conf` |
+
+## Verify
+
+Run each check. The routers keep starting for up to a minute after the deploy finishes, so if a check fails at
+first, wait 30 seconds and try again.
+
+| Step | Command | You should see |
+|---|---|---|
+| 1. Nodes running | `containerlab inspect -t routed.clab.yml` | `srl1`, `srl2`, `h1` and `h2` all `running`, with addresses 172.20.20.11, .12, .21 and .22 |
+| 2. Router links up | on srl1: `show interface ethernet-1/1` and `show interface ethernet-1/2` | `ethernet-1/1 is up` and `ethernet-1/2 is up` |
+| 3. Static route | on srl1: `info from state network-instance default static-routes route 192.168.2.0/24` | `installed true` |
+| 4. Host to host | `docker exec clab-routed-h1 ping -c 3 192.168.2.10` | `3 packets transmitted, 3 packets received, 0% packet loss` |
+| 5. Path | `docker exec clab-routed-h1 traceroute -n 192.168.2.10` | three hops: `192.168.1.1`, `10.0.12.2`, `192.168.2.10` |
+
+For steps 2 and 3, log in with `ssh admin@clab-routed-srl1` (password `NokiaSrl1!`), and leave with `quit`.
+
+Or run all the checks at once from the lab folder:
+
+```bash
+./verify.sh
+```
+
+```
+Checking lab routed
+  PASS  srl1 is running with management address 172.20.20.11
+  PASS  srl2 is running with management address 172.20.20.12
+  PASS  h1 is running with management address 172.20.20.21
+  PASS  h2 is running with management address 172.20.20.22
+  PASS  srl1 ethernet-1/1 is up
+  PASS  srl1 ethernet-1/2 is up
+  PASS  srl2 ethernet-1/1 is up
+  PASS  srl2 ethernet-1/2 is up
+  PASS  srl1 has the static route to 192.168.2.0/24 installed
+  PASS  srl2 has the static route to 192.168.1.0/24 installed
+  PASS  h1 pings h2 (192.168.1.10 -> 192.168.2.10), 0% loss
+  PASS  h1 to h2 path is srl1 -> srl2 -> h2 (192.168.1.1 10.0.12.2 192.168.2.10)
+
+All checks passed.
+```
+
+The script waits for the routers to finish starting before it checks them. Any `FAIL` line says what is wrong.
+
+## Change the lab
+
+| Task | Command |
+|---|---|
+| Rebuild from scratch after editing the file or a startup config | `containerlab deploy -t routed.clab.yml --reconfigure` |
+| Save the routers' running configs into the lab folder | `containerlab save -t routed.clab.yml` |
+| Draw the topology as a Mermaid diagram | `containerlab graph -t routed.clab.yml --mermaid` (writes `clab-routed/graph/routed.clab.mermaid`) |
+| Show the lab in a browser | `containerlab graph -t routed.clab.yml`, then open port 50080 on the host |
+
+Without `--reconfigure`, a redeploy reuses the configs already in the lab folder, so edits to a startup config do not
+take effect.
+
+## Remove the lab
+
+```bash
+containerlab destroy -t routed.clab.yml
+```
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Deploy stops with a YAML parsing error | An indentation or quoting mistake. YAML uses spaces, never tabs; align each level by two spaces |
+| A node fails with an interface name error | The interface name does not match the node's kind, for example `eth1` on an SR Linux node instead of `ethernet-1/1` |
+| Deploy fails because a management address is already taken | Another container already has that `mgmt-ipv4`. Pick a free address or remove the other lab |
+| A startup config change has no effect | Deploy with `--reconfigure` |
+| Hosts cannot ping each other but all links are up | Check the static routes (step 3) and the host routes: `docker exec clab-routed-h1 ip route` |
+
+## Next
+
+Part 4 covers connecting to the nodes in a lab: SSH by name, `docker exec`, reaching nodes from another machine, and
+the generated inventories for automation tools.
+
+**Sources:** [Topology definition](https://containerlab.dev/manual/topo-def-file/) ·
+[Node properties](https://containerlab.dev/manual/nodes/) · [Network wiring](https://containerlab.dev/manual/network/) ·
+[containerlab graph](https://containerlab.dev/cmd/graph/)
