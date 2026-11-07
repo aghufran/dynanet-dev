@@ -1,7 +1,7 @@
 # Part 2 (Loading network OS images): two Nokia SR Linux routers joined by one link.
 # SR Linux is free to pull from a public registry, so this lab needs no vendor account.
 #
-#   docker pull ghcr.io/nokia/srlinux:latest
+#   docker pull ghcr.io/nokia/srlinux:26.7.2
 #   containerlab deploy -t srl-pair.clab.yml
 #   ssh admin@clab-srl-pair-srl1          (password NokiaSrl1!)
 #   containerlab destroy -t srl-pair.clab.yml
@@ -11,11 +11,11 @@ topology:
   nodes:
     srl1:
       kind: nokia_srlinux
-      image: ghcr.io/nokia/srlinux:latest
+      image: ghcr.io/nokia/srlinux:26.7.2
       startup-config: srl1.cli
     srl2:
       kind: nokia_srlinux
-      image: ghcr.io/nokia/srlinux:latest
+      image: ghcr.io/nokia/srlinux:26.7.2
       startup-config: srl2.cli
 
   links:

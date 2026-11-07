@@ -48,7 +48,7 @@ topology:
 
 | Key | Required | What it does |
 |---|---|---|
-| `name` | Yes | Names the lab. Containers are called `clab-<name>-<node>`, and generated files go in a folder `clab-<name>`. Avoid dashes in the name |
+| `name` | Yes | Names the lab. Containers are called `clab-<name>-<node>`, and generated files go in a folder `clab-<name>`. Keep it short: it is part of every container name |
 | `prefix` | No | Changes the `clab` part of container names; `""` uses bare node names |
 | `mgmt` | No | Sets the management network. Leave it out to use the default `clab` network, 172.20.20.0/24 |
 | `topology.nodes` | Yes | One entry per node |
@@ -66,7 +66,7 @@ topology:
   # Settings shared by every node of a kind.
   kinds:
     nokia_srlinux:
-      image: ghcr.io/nokia/srlinux:latest
+      image: ghcr.io/nokia/srlinux:26.7.2
     linux:
       image: alpine:3
 
@@ -193,18 +193,19 @@ image version:
 ```yaml
   kinds:
     nokia_srlinux:
-      image: ghcr.io/nokia/srlinux:${SRL_VERSION:=latest}
+      image: ghcr.io/nokia/srlinux:${SRL_VERSION:=26.7.2}
 ```
 
-`SRL_VERSION=26.7.2 containerlab deploy -t routed.clab.yml` then uses version 26.7.2, and plain
-`containerlab deploy` uses `latest`.
+Plain `containerlab deploy -t routed.clab.yml` then uses version 26.7.2, and
+`SRL_VERSION=latest containerlab deploy -t routed.clab.yml` uses the newest release instead.
 
 ## Deploy
 
-If you cloned the repository earlier, run `git pull` inside it first to get the Part 3 files.
+First update your copy of the workshop files, then deploy:
 
 ```bash
-cd course/common/containerlab/labs/03-topology
+cd ~/dynanet-dev && git pull
+cd ~/dynanet-dev/common/containerlab/labs/03-topology
 containerlab deploy -t routed.clab.yml
 ```
 
@@ -219,6 +220,10 @@ Containerlab also creates:
 | Host names for the nodes | a `CLAB-routed` block in `/etc/hosts` |
 | SSH settings for the nodes | `/etc/ssh/ssh_config.d/clab-routed.conf` |
 
+With Containerlab 0.83 or later, `docker ps` also shows a helper container for each SR Linux router,
+`clab-routed-srl1-netns` and `clab-routed-srl2-netns`. It holds the router's network interfaces; leave it alone, and
+`containerlab destroy` removes it with the lab.
+
 ## Verify
 
 Run each check. The routers keep starting for up to a minute after the deploy finishes, so if a check fails at
@@ -232,7 +237,7 @@ first, wait 30 seconds and try again.
 | 4. Host to host | `docker exec clab-routed-h1 ping -c 3 192.168.2.10` | `3 packets transmitted, 3 packets received, 0% packet loss` |
 | 5. Path | `docker exec clab-routed-h1 traceroute -n 192.168.2.10` | three hops: `192.168.1.1`, `10.0.12.2`, `192.168.2.10` |
 
-For steps 2 and 3, log in with `ssh admin@clab-routed-srl1` (password `NokiaSrl1!`), and leave with `quit`.
+For steps 2 and 3, log in with `ssh admin@clab-routed-srl1` (password `NokiaSrl1!` if asked), and leave with `quit`.
 
 Or run all the checks at once from the lab folder:
 
@@ -286,6 +291,7 @@ containerlab destroy -t routed.clab.yml
 | Deploy stops with a YAML parsing error | An indentation or quoting mistake. YAML uses spaces, never tabs; align each level by two spaces |
 | A node fails with an interface name error | The interface name does not match the node's kind, for example `eth1` on an SR Linux node instead of `ethernet-1/1` |
 | Deploy fails because a management address is already taken | Another container already has that `mgmt-ipv4`. Pick a free address or remove the other lab |
+| Deploy fails, or nodes are unreachable, because 172.20.20.0/24 is already used on your network | Add an `mgmt` block with a free range (see Management network above) and change every `mgmt-ipv4` to match |
 | A startup config change has no effect | Deploy with `--reconfigure` |
 | Hosts cannot ping each other but all links are up | Check the static routes (step 3) and the host routes: `docker exec clab-routed-h1 ip route` |
 

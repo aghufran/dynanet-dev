@@ -21,7 +21,7 @@ rather than copying it.
 ## Clone
 
 ```bash
-git clone --recurse-submodules git@github.com:aghufran/course.git   # everything you can access
+git clone --recurse-submodules git@github.com:aghufran/dynanet-dev.git   # everything you can access
 git submodule update --init institutions/<institution>              # one institution, later
 ```
 

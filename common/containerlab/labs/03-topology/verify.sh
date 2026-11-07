@@ -7,14 +7,23 @@ fail() { printf '  FAIL  %s\n' "$1"; fails=$((fails + 1)); }
 cli()  { docker exec "clab-$lab-$1" sr_cli "$2" 2>/dev/null; }
 
 echo "Checking lab $lab"
+# Management addresses as Containerlab reports them (works whatever network mode a node's container uses).
+mgmt=$(containerlab inspect -t "$(dirname "$0")/routed.clab.yml" --format json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    for nodes in json.load(sys.stdin).values():
+        for n in nodes:
+            print(n["name"], n.get("ipv4_address", "").split("/")[0])
+except ValueError:
+    pass')
 for n in srl1:172.20.20.11 srl2:172.20.20.12 h1:172.20.20.21 h2:172.20.20.22; do
     name=${n%%:*}; ip=${n#*:}
     if [[ $(docker inspect -f '{{.State.Running}}' "clab-$lab-$name" 2>/dev/null) != true ]]; then
         fail "$name is not running"; continue
     fi
-    got=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "clab-$lab-$name")
+    got=$(awk -v n="clab-$lab-$name" '$1 == n {print $2}' <<<"$mgmt")
     [[ $got == "$ip" ]] && pass "$name is running with management address $ip" \
-                        || fail "$name has management address $got, expected $ip"
+                        || fail "$name has management address ${got:-unknown}, expected $ip"
 done
 (( fails == 0 )) || { echo; echo "Deploy the lab first: containerlab deploy -t routed.clab.yml"; exit 1; }
 

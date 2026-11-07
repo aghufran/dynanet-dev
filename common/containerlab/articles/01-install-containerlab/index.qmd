@@ -21,7 +21,7 @@ This is the first part of the Containerlab workshop. All the instructions are fo
 
 | Item | Requirement |
 |---|---|
-| Host | An Ubuntu 22.04, 24.04 or 26.04 LTS machine or VM, x86_64 or ARM64 |
+| Host | An Ubuntu 22.04, 24.04 or 26.04 LTS machine or VM. Use x86_64: many network OS images, Cisco XRd among them, are not built for ARM64 |
 | Access | A user with `sudo` rights |
 | CPU | More than 1 vCPU. Most network OS containers need at least one core each while booting |
 | Memory | Depends on the lab. A Linux node needs a few MB; a Cisco XRd router about **2.5 GB**; Nokia SR Linux and Arista cEOS about 1–2 GB each |
@@ -36,6 +36,17 @@ On a mini PC with a Ryzen 7 255 and 64 GB of RAM, a 15-router Cisco XRd lab uses
 comfortably. Memory, not CPU, is usually what limits how many nodes fit on one host.
 :::
 
+## Before you start
+
+Install `curl` and `git`, which the steps below use. Ubuntu Server usually has them; Ubuntu Desktop may not:
+
+```bash
+sudo apt update
+sudo apt install -y curl git
+```
+
+Then choose **one** of the two options below.
+
 ## Option A: the quick setup script
 
 On a fresh Ubuntu 22.04 or 24.04 host, one command installs everything: Docker CE, Docker Compose, Containerlab and
@@ -48,8 +59,8 @@ curl -sL https://containerlab.dev/setup | sudo -E bash -s "all"
 The script also raises the SSH server's maximum login attempts, which helps when you SSH into many lab nodes. To skip
 that change, run `export SETUP_SSHD="false"` first.
 
-Then log out and back in (or run `newgrp docker`) so that your user's new group membership takes effect, and go to
-[Check the installation](#check-the-installation).
+Then log out and back in, so that your user's new groups (`docker` and `clab_admins`) take effect, and go to
+[Check the installation](#check-the-installation). If `id -nG` still does not list both groups, reboot.
 
 The script is tested on Ubuntu up to 24.04. On Ubuntu 26.04, use Option B.
 
@@ -63,8 +74,7 @@ step shows what is being installed, so use this route if you want to know exactl
 Ubuntu's own `docker.io` package is enough for Containerlab:
 
 ```bash
-sudo apt update
-sudo apt install -y docker.io docker-compose-v2
+sudo apt install -y docker.io
 sudo usermod -aG docker "$USER"
 ```
 
@@ -147,11 +157,13 @@ topology file there; it is read in your browser and nothing is uploaded.
 
 ### Deploy
 
-Get the workshop files and deploy the lab:
+Get the workshop files into your home folder, then deploy the lab. Every later part uses this same copy, in
+`~/dynanet-dev`:
 
 ```bash
-git clone https://github.com/aghufran/course.git
-cd course/common/containerlab/labs/01-first-lab
+cd ~
+git clone https://github.com/aghufran/dynanet-dev.git
+cd ~/dynanet-dev/common/containerlab/labs/01-first-lab
 containerlab deploy -t first-lab.clab.yml
 ```
 
@@ -203,7 +215,7 @@ generated files and is left in place; it is recreated on the next deploy.
 |---|---|
 | Upgrade to the latest release | `sudo -E containerlab version upgrade`, or `sudo apt update && sudo apt install containerlab` |
 | List the versions available | `apt-cache madison containerlab` |
-| Install a specific version | `sudo apt install containerlab=0.82.0` |
+| Install a specific version | `sudo apt install containerlab=0.82.0` (if a newer version is installed, apt asks you to confirm the downgrade) |
 | Stop it upgrading (and allow again) | `sudo apt-mark hold containerlab` (`sudo apt-mark unhold containerlab`) |
 | Uninstall | `sudo apt remove containerlab` |
 

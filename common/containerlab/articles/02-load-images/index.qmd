@@ -39,11 +39,11 @@ Network OS images are large. Allow 3–5 GB of disk per image, and check free sp
 
 ## Route 1: pull a public image (Nokia SR Linux)
 
-Nokia publishes SR Linux in the GitHub container registry, free for anyone to use. Pull a fixed version for a workshop
-so that everyone runs the same release, or `latest` for your own testing:
+Nokia publishes SR Linux in the GitHub container registry, free for anyone to use. The workshop labs use version
+**26.7.2**, so that everyone runs the same release and sees the same output:
 
 ```bash
-docker pull ghcr.io/nokia/srlinux:latest
+docker pull ghcr.io/nokia/srlinux:26.7.2
 docker images ghcr.io/nokia/srlinux
 ```
 
@@ -113,7 +113,7 @@ forwarding performance and needs more host setup.
    docker images ios-xr/xrd-control-plane
    ```
 
-The 7.11.2 image takes about 2.7 GB of disk.
+Allow about 3 GB of disk for the 7.11.2 image. `docker images` reports between 1.3 and 2.7 GB, depending on the Docker version.
 
 ### Prepare the host
 
@@ -137,6 +137,18 @@ run `scripts/host-check -p xrd-control-plane -e docker` from a clone of it.
 | Login | `clab` / `clab@123` |
 | Interface names in the topology | `Gi0-0-0-0`, `Gi0-0-0-1`, … (IOS XR `GigabitEthernet0/0/0/0`, …) |
 | Memory per node | about 2.5 GB |
+
+The `clab` login is created by the configuration Containerlab generates for XRd. If you give an XRd node your own
+`startup-config`, Containerlab uses your file instead, so include a user and SSH in it, or SSH to the node is refused:
+
+```
+username clab
+ group root-lr
+ group cisco-support
+ secret clab@123
+!
+ssh server v2
+```
 
 ## Route 4: build an image from a VM disk (vrnetlab)
 
@@ -194,11 +206,11 @@ topology:
   nodes:
     srl1:
       kind: nokia_srlinux
-      image: ghcr.io/nokia/srlinux:latest
+      image: ghcr.io/nokia/srlinux:26.7.2
       startup-config: srl1.cli
     srl2:
       kind: nokia_srlinux
-      image: ghcr.io/nokia/srlinux:latest
+      image: ghcr.io/nokia/srlinux:26.7.2
       startup-config: srl2.cli
 
   links:
@@ -219,10 +231,11 @@ set / network-instance default interface ethernet-1/1.0
 
 ### Deploy
 
-If you cloned the repository in Part 1, run `git pull` inside it first to get the Part 2 files.
+First update your copy of the workshop files from Part 1, then deploy:
 
 ```bash
-cd course/common/containerlab/labs/02-images
+cd ~/dynanet-dev && git pull
+cd ~/dynanet-dev/common/containerlab/labs/02-images
 containerlab deploy -t srl-pair.clab.yml
 ```
 
@@ -231,7 +244,8 @@ The deploy takes about 15 seconds once the image is on the host. It ends with a 
 
 ### Verify
 
-Log in to `srl1` (password `NokiaSrl1!`) and run each check. Your version number may be newer.
+Log in to `srl1` and run each check. If SSH asks for a password, it is `NokiaSrl1!`; if you have an SSH key, you
+are logged straight in.
 
 ```bash
 ssh admin@clab-srl-pair-srl1
@@ -303,6 +317,9 @@ any case: GitHub rejects files larger than 100 MB.
 | `docker load` reports `invalid tar header` | You passed the outer XRd archive. Unpack it first and load the `.dockerv1.tgz` file inside |
 | `no space left on device` while loading | Free disk space: `docker system df`, then `docker image prune` to remove unused images |
 | XRd node restarts or logs inotify errors | The sysctl limits are not applied. Check with `sysctl fs.inotify.max_user_instances` |
+| An SR Linux node stops straight after starting, on a VM | The VM's virtual CPU lacks the SSSE3 instructions SR Linux needs. Set the VM's CPU model to "host passthrough" |
+| SSH to an XRd node is refused although it has booted | Your own `startup-config` has no user or `ssh server v2`. Add them (see Route 3) and redeploy with `--reconfigure` |
+| `rm -rf clab-<lab>` fails with `Permission denied` | XRd writes files owned by root into the lab folder. Use `sudo rm -rf clab-<lab>`, or just redeploy with `--reconfigure` |
 | vrnetlab node never finishes booting | KVM is missing. Check `kvm-ok`, and on a VM enable nested virtualization |
 
 ## Next

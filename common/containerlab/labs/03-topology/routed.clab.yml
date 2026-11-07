@@ -12,7 +12,7 @@ topology:
   # Settings shared by every node of a kind.
   kinds:
     nokia_srlinux:
-      image: ghcr.io/nokia/srlinux:latest
+      image: ghcr.io/nokia/srlinux:26.7.2
     linux:
       image: alpine:3
 

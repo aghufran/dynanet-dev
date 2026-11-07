@@ -16,8 +16,8 @@ Training material for networking courses: articles, lab files and scripts.
 ## Get the material
 
 ```bash
-git clone https://github.com/aghufran/course.git
-cd course/common/containerlab
+git clone https://github.com/aghufran/dynanet-dev.git
+cd dynanet-dev/common/containerlab
 ```
 
 ## Layout

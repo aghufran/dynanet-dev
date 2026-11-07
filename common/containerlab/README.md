@@ -1,6 +1,6 @@
 # Containerlab Workshop
 
-Part of [aghufran/course](https://github.com/aghufran/course): shared material for every course.
+Part of [aghufran/dynanet-dev](https://github.com/aghufran/dynanet-dev): shared material for every course.
 
 Hands-on material for building networking labs with [Containerlab](https://containerlab.dev).
 The full articles are published at **https://dynanet.dev/workshops/containerlab/**; this folder holds the lab
@@ -21,8 +21,8 @@ files you run.
 On an Ubuntu host with Docker and Containerlab installed (see Part 1):
 
 ```bash
-git clone https://github.com/aghufran/course.git
-cd course/common/containerlab/labs/01-first-lab
+git clone https://github.com/aghufran/dynanet-dev.git
+cd dynanet-dev/common/containerlab/labs/01-first-lab
 containerlab deploy -t first-lab.clab.yml
 ./verify.sh                     # every check should say PASS
 containerlab destroy -t first-lab.clab.yml

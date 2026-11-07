@@ -22,14 +22,16 @@ host to a Python script that logs in to every router. This part tries each one o
 
 ## Start the lab
 
+Update your copy of the workshop files, then deploy the Part 3 lab:
+
 ```bash
-cd course/common/containerlab/labs/03-topology
+cd ~/dynanet-dev && git pull
+cd ~/dynanet-dev/common/containerlab/labs/03-topology
 containerlab deploy -t routed.clab.yml
 ```
 
-Run `git pull` in your clone first if you have not fetched the Part 4 files. To recall the lab's layout, open it in the
-[topology viewer](https://graphs.dynanet.dev/topology?example=routed). The commands below assume you are in
-`labs/03-topology` unless they say otherwise.
+To recall the lab's layout, open it in the [topology viewer](https://graphs.dynanet.dev/topology?example=routed).
+The commands below assume you are in `~/dynanet-dev/common/containerlab/labs/03-topology` unless they say otherwise.
 
 ## SSH by node name
 
@@ -212,7 +214,7 @@ Run each check on the lab host.
 
 | Step | Command | You should see |
 |---|---|---|
-| 1. Names | `grep clab-routed /etc/hosts` | four lines: `clab-routed-srl1`, `-srl2`, `-h1` and `-h2` with their addresses |
+| 1. Names | `grep clab-routed /etc/hosts` | a line for each of `clab-routed-srl1`, `-srl2`, `-h1` and `-h2` with its 172.20.20.x address (plus a second line each with an IPv6 address on some hosts) |
 | 2. SSH by name | `ssh clab-routed-srl1`, then `show version`, then `quit` | the SR Linux prompt with no password (or a password prompt if you have no SSH key), then `Software Version` |
 | 3. docker exec | `docker exec clab-routed-h1 hostname` | `h1` |
 | 4. containerlab exec | `containerlab exec -t routed.clab.yml --label clab-node-kind=nokia_srlinux --cmd "sr_cli show version"` | a `Software Version` line for each of srl1 and srl2 |
@@ -248,7 +250,7 @@ runs on your laptop, so the script cannot check it.
 ## Remove the lab
 
 ```bash
-cd ../03-topology
+cd ~/dynanet-dev/common/containerlab/labs/03-topology
 containerlab destroy -t routed.clab.yml
 ```
 
