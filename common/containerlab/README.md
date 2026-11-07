@@ -11,7 +11,7 @@ files you run.
 | Part | Topic | Article | Lab files |
 |---|---|---|---|
 | 1 | Installing Containerlab | [Part 1](https://dynanet.dev/workshops/containerlab/01-install-containerlab/) | [`labs/01-first-lab`](labs/01-first-lab) |
-| 2 | Loading network OS images into Docker | coming soon | |
+| 2 | Loading network OS images into Docker | [Part 2](https://dynanet.dev/workshops/containerlab/02-load-images/) | [`labs/02-images`](labs/02-images) |
 | 3 | Writing a lab topology file | coming soon | |
 | 4 | Connecting to the nodes in a lab | coming soon | |
 | 5 | Running a lab across several cloud VMs (AWS) | coming soon | [`cloud/`](cloud) |
@@ -24,9 +24,11 @@ On an Ubuntu host with Docker and Containerlab installed (see Part 1):
 git clone https://github.com/aghufran/course.git
 cd course/common/containerlab/labs/01-first-lab
 containerlab deploy -t first-lab.clab.yml
-docker exec -it clab-first-lab-n1 ping -c 3 10.0.12.2
+./verify.sh                     # every check should say PASS
 containerlab destroy -t first-lab.clab.yml
 ```
+
+Every lab folder has a `verify.sh` that checks the running lab and prints PASS or FAIL for each check.
 
 ## Folder layout
 

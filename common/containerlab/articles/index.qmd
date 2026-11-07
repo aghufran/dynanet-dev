@@ -19,7 +19,7 @@ order. The lab files are in the workshop repository:
 | Part | Topic | Status |
 |---|---|---|
 | 1 | Installing Containerlab | Available |
-| 2 | Loading network OS images into Docker | Coming soon |
+| 2 | Loading network OS images into Docker | Available |
 | 3 | Writing a lab topology file | Coming soon |
 | 4 | Connecting to the nodes in a lab | Coming soon |
 | 5 | Running a lab across several cloud VMs (AWS) | Coming soon |

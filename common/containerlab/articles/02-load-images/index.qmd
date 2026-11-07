@@ -1,0 +1,313 @@
+---
+title: "Part 2: Loading network OS images"
+description: "Get router and switch images into Docker so Containerlab can use them: pull Nokia SR Linux, import Arista cEOS, load Cisco XRd, and build VM-based images with vrnetlab."
+date: 2026-11-07
+order: 2
+categories: [containerlab, workshop]
+---
+
+Every node in a Containerlab lab is a container, so every network operating system you want to use must exist as a
+Docker image on the host first. How you get that image depends on the vendor. Some publish it in a public registry,
+some give you a file to download with an account, and some only ship a virtual machine disk.
+
+This part shows all four routes on Ubuntu, then runs a two-router lab to prove an image works. It assumes you finished
+[Part 1](../01-install-containerlab/).
+
+| Route | Typical images | Account needed | Command |
+|---|---|---|---|
+| Pull from a public registry | Nokia SR Linux, FRRouting, Linux hosts | No | `docker pull` |
+| Import a vendor download | Arista cEOS | Free account | `docker import` |
+| Load a vendor download | Cisco XRd | Cisco account with entitlement | `docker load` |
+| Build from a VM disk (vrnetlab) | Cisco Catalyst 8000V, XRv 9000, Juniper vJunos, Nokia SR OS | Varies | `make` |
+
+## Docker image basics
+
+An image is named `repository:tag`, for example `ghcr.io/nokia/srlinux:26.7.2`. The tag is usually the software
+version. A topology file refers to an image by exactly this name, so pick clear names and keep them.
+
+| Task | Command |
+|---|---|
+| List images on the host | `docker images` |
+| Give an image another name | `docker tag <old name> <new name>` |
+| Remove an image | `docker rmi <name>` |
+| Show disk used by images | `docker system df` |
+
+When you deploy a lab, Containerlab uses the local image if it exists and tries to pull it from a registry if it does
+not. Pulling only works for public images, so vendor images must be loaded before you deploy.
+
+Network OS images are large. Allow 3–5 GB of disk per image, and check free space with `df -h /var/lib/docker`.
+
+## Route 1: pull a public image (Nokia SR Linux)
+
+Nokia publishes SR Linux in the GitHub container registry, free for anyone to use. Pull a fixed version for a workshop
+so that everyone runs the same release, or `latest` for your own testing:
+
+```bash
+docker pull ghcr.io/nokia/srlinux:latest
+docker images ghcr.io/nokia/srlinux
+```
+
+The download is about 750 MB and unpacks to about 3.2 GB. Available versions are listed on the
+[SR Linux container image page](https://github.com/nokia/srlinux-container-image).
+
+| Setting | Value |
+|---|---|
+| Containerlab kind | `nokia_srlinux` |
+| Login | `admin` / `NokiaSrl1!` |
+| Interface names in the topology | `ethernet-1/1`, `ethernet-1/2`, … |
+| Memory per node | about 1.8 GB |
+
+## Route 2: import a vendor download (Arista cEOS)
+
+Arista's cEOS is free but needs an account:
+
+1. Create an account at [arista.com](https://www.arista.com) and log in.
+2. Go to **Support → Software Download**, open **cEOS-lab**, and download the 64-bit archive for your release, for
+   example `cEOS64-lab-4.32.0F.tar.xz`.
+3. Copy the file to the lab host and import it, naming the image after its release:
+
+```bash
+docker import cEOS64-lab-4.32.0F.tar.xz ceos:4.32.0F
+docker images ceos
+```
+
+cEOS ships as a file system archive, not a saved image, which is why it uses `docker import` rather than
+`docker load`.
+
+| Setting | Value |
+|---|---|
+| Containerlab kind | `arista_ceos` |
+| Login | `admin` / `admin` |
+| Interface names in the topology | `eth1`, `eth2`, … |
+
+Use cEOS 4.32.0F or later on current Ubuntu releases. Older releases need cgroups v1, which Ubuntu no longer uses by
+default.
+
+## Route 3: load a vendor download (Cisco XRd)
+
+Cisco XRd runs IOS XR as a container. The **control-plane** image is the one for labs; the vRouter image is for
+forwarding performance and needs more host setup.
+
+### Get and load the image
+
+1. Log in to [software.cisco.com](https://software.cisco.com) with a Cisco account that is entitled to XRd, and
+   download the XRd control-plane archive for your release.
+2. Copy it to the lab host and unpack it. It contains the image file `xrd-control-plane-container-x64.dockerv1.tgz`
+   and signature files:
+
+   ```bash
+   mkdir xrd && tar -xzf xrd-control-plane-container-x64.<release>.tgz -C xrd
+   ls xrd
+   ```
+
+3. Load the image and note the name Docker prints on the `Loaded image:` line. The name differs between releases:
+
+   ```bash
+   docker load -i xrd/xrd-control-plane-container-x64.dockerv1.tgz
+   ```
+
+4. Give it a clear name that includes the release, and use that name in your topologies:
+
+   ```bash
+   docker tag <name from the Loaded image line> ios-xr/xrd-control-plane:7.11.2
+   docker images ios-xr/xrd-control-plane
+   ```
+
+The 7.11.2 image takes about 2.7 GB of disk.
+
+### Prepare the host
+
+XRd opens many file watches. Raise the Linux limits once, permanently:
+
+```bash
+sudo tee /etc/sysctl.d/90-xrd.conf > /dev/null <<'EOF'
+fs.inotify.max_user_instances=64000
+fs.inotify.max_user_watches=131072
+EOF
+sudo sysctl --system
+```
+
+These values run a 15-router XRd lab on the workshop host. Cisco's
+[xrd-tools](https://github.com/ios-xr/xrd-tools) repository has a `host-check` script that tests a host for XRd:
+run `scripts/host-check -p xrd-control-plane -e docker` from a clone of it.
+
+| Setting | Value |
+|---|---|
+| Containerlab kind | `cisco_xrd` |
+| Login | `clab` / `clab@123` |
+| Interface names in the topology | `Gi0-0-0-0`, `Gi0-0-0-1`, … (IOS XR `GigabitEthernet0/0/0/0`, …) |
+| Memory per node | about 2.5 GB |
+
+## Route 4: build an image from a VM disk (vrnetlab)
+
+Many vendors only ship their virtual routers as VM disks, usually `.qcow2` files. [vrnetlab](https://containerlab.dev/manual/vrnetlab/)
+wraps such a disk and a small QEMU virtual machine in a container image, so Containerlab can run it like any other
+node. Use the [srl-labs fork](https://github.com/srl-labs/vrnetlab); images built with the original project do not
+work with Containerlab.
+
+### Check that the host can run VMs
+
+vrnetlab needs hardware virtualization (KVM):
+
+```bash
+sudo apt install -y cpu-checker
+kvm-ok
+ls -l /dev/kvm
+```
+
+`kvm-ok` should report "KVM acceleration can be used". On a cloud VM this needs nested virtualization or a bare-metal
+instance; Part 5 covers this for AWS.
+
+### Build an image (example: Cisco Catalyst 8000V)
+
+```bash
+git clone https://github.com/srl-labs/vrnetlab.git
+cd vrnetlab/cisco/c8000v
+cp ~/Downloads/c8000v-universalk9.17.11.01a.qcow2 .
+make docker-image
+docker images | grep c8000v
+```
+
+Each platform has its own folder (`cisco/`, `juniper/`, `nokia/` and so on) and a README with its exact steps. The
+image is named after the platform and the version in the disk's file name. Check the name with `docker images` and
+use it in your topology.
+
+| Setting (Catalyst 8000V) | Value |
+|---|---|
+| Containerlab kind | `cisco_c8000v` |
+| Login | `admin` / `admin` |
+| Resources per node | 1 vCPU and 4 GB by default |
+| Boot time | about 5 minutes; watch with `docker logs -f <container>` |
+
+VM-based nodes boot far more slowly and use more memory than native container images. Prefer a container image when
+the vendor offers one.
+
+## Test an image: a two-router SR Linux lab
+
+The workshop repository has a lab that needs no vendor account: two SR Linux routers joined by one link. A small
+startup configuration gives each router an address on the link, so you can prove the image works end to end.
+
+```yaml
+name: srl-pair
+
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:latest
+      startup-config: srl1.cli
+    srl2:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:latest
+      startup-config: srl2.cli
+
+  links:
+    - endpoints: ["srl1:ethernet-1/1", "srl2:ethernet-1/1"]
+```
+
+`srl1.cli` holds SR Linux CLI commands that Containerlab applies at boot (`srl2.cli` is the same with `10.0.12.2`):
+
+```
+set / interface ethernet-1/1 admin-state enable
+set / interface ethernet-1/1 subinterface 0 ipv4 admin-state enable
+set / interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30
+set / network-instance default type default
+set / network-instance default interface ethernet-1/1.0
+```
+
+### Deploy
+
+If you cloned the repository in Part 1, run `git pull` inside it first to get the Part 2 files.
+
+```bash
+cd course/common/containerlab/labs/02-images
+containerlab deploy -t srl-pair.clab.yml
+```
+
+The deploy takes about 15 seconds once the image is on the host. It ends with a table listing
+`clab-srl-pair-srl1` and `clab-srl-pair-srl2`, both `running`.
+
+### Verify
+
+Log in to `srl1` (password `NokiaSrl1!`) and run each check. Your version number may be newer.
+
+```bash
+ssh admin@clab-srl-pair-srl1
+```
+
+| Step | Command (on srl1) | You should see |
+|---|---|---|
+| 1. Software | `show version` | `Software Version : v26.7.2` and `Chassis Type : 7220 IXR-D2L` |
+| 2. Link up | `show interface ethernet-1/1` | `ethernet-1/1 is up` |
+| 3. Address | `show interface ethernet-1/1.0` | `IPv4 addr : 10.0.12.1/30` |
+| 4. Neighbour | `show system lldp neighbor` | a row for `ethernet-1/1` with Neighbor System Name `srl2` |
+| 5. Reachability | `ping 10.0.12.2 network-instance default -c 3` | `3 packets transmitted, 3 received, 0% packet loss` |
+
+Leave the router with `quit`. If step 4 or 5 fails straight after the deploy, wait 30 seconds and try again; the
+routers take a moment to finish starting.
+
+Or run all the checks at once from the lab folder:
+
+```bash
+./verify.sh
+```
+
+```
+Checking lab srl-pair
+  PASS  srl1 is running
+  PASS  srl2 is running
+  PASS  srl1 answers the CLI: SR Linux v26.7.2
+  PASS  srl1 ethernet-1/1 is up
+  PASS  srl2 ethernet-1/1 is up
+  PASS  srl1 sees srl2 as an LLDP neighbour
+  PASS  srl1 pings srl2 (10.0.12.1 -> 10.0.12.2), 0% loss
+
+All checks passed.
+```
+
+Any `FAIL` line says what is wrong; the troubleshooting table below covers the usual causes.
+
+### Remove the lab
+
+```bash
+containerlab destroy -t srl-pair.clab.yml
+```
+
+To try another image, change `kind`, `image` and the interface names to the values in that route's table.
+
+## Move images between hosts
+
+To prepare several lab hosts, download a vendor image once, then copy it:
+
+```bash
+docker save ios-xr/xrd-control-plane:7.11.2 | gzip > xrd-7.11.2.tar.gz   # on the host that has it
+scp xrd-7.11.2.tar.gz user@labhost:                                      # copy it
+docker load -i xrd-7.11.2.tar.gz                                         # on the new host
+```
+
+::: {.callout-important}
+## Vendor images are licensed software
+Cisco XRd and Arista cEOS images are covered by their vendors' licence terms. Do not put them in a public Git
+repository, a public registry or a shared download link. Each attendee downloads them with their own account, or the
+instructor loads them onto hosts the training provides, as the licence allows. Git is the wrong place for images in
+any case: GitHub rejects files larger than 100 MB.
+:::
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Deploy fails with `pull access denied` or `manifest unknown` | The image is not on the host and is not public. Load it first, and check the name in the topology matches `docker images` exactly, tag included |
+| `docker load` reports `invalid tar header` | You passed the outer XRd archive. Unpack it first and load the `.dockerv1.tgz` file inside |
+| `no space left on device` while loading | Free disk space: `docker system df`, then `docker image prune` to remove unused images |
+| XRd node restarts or logs inotify errors | The sysctl limits are not applied. Check with `sysctl fs.inotify.max_user_instances` |
+| vrnetlab node never finishes booting | KVM is missing. Check `kvm-ok`, and on a VM enable nested virtualization |
+
+## Next
+
+Part 3 covers writing a topology file: nodes, kinds, links, startup configurations and management addresses.
+
+**Sources:** [Containerlab kinds](https://containerlab.dev/manual/kinds/) ·
+[SR Linux](https://containerlab.dev/manual/kinds/srl/) · [Arista cEOS](https://containerlab.dev/manual/kinds/ceos/) ·
+[Cisco XRd](https://containerlab.dev/manual/kinds/xrd/) · [Catalyst 8000V](https://containerlab.dev/manual/kinds/vr-c8000v/) ·
+[vrnetlab](https://containerlab.dev/manual/vrnetlab/) · [xrd-tools](https://github.com/ios-xr/xrd-tools)

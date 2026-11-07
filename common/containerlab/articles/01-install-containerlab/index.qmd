@@ -142,6 +142,8 @@ topology:
     - endpoints: ["n1:eth1", "n2:eth1"]
 ```
 
+### Deploy
+
 Get the workshop files and deploy the lab:
 
 ```bash
@@ -153,16 +155,39 @@ containerlab deploy -t first-lab.clab.yml
 Containerlab pulls the Alpine image, starts both nodes, creates the link and prints a table of the nodes with their
 management addresses. Each node is a container named `clab-<lab name>-<node name>`.
 
-Ping across the link from `n1` to `n2`:
+### Verify
+
+Run each check from the host. Each node is a container, so `docker exec` runs a command inside it.
+
+| Step | Command | You should see |
+|---|---|---|
+| 1. Nodes running | `containerlab inspect --all` | `clab-first-lab-n1` and `clab-first-lab-n2`, both `running` |
+| 2. Address on n1 | `docker exec clab-first-lab-n1 ip -4 addr show eth1` | `inet 10.0.12.1/30` |
+| 3. Address on n2 | `docker exec clab-first-lab-n2 ip -4 addr show eth1` | `inet 10.0.12.2/30` |
+| 4. Reachability | `docker exec clab-first-lab-n1 ping -c 3 10.0.12.2` | `3 packets transmitted, 3 packets received, 0% packet loss` |
+
+Or run all the checks at once from the lab folder:
 
 ```bash
-docker exec -it clab-first-lab-n1 ping -c 3 10.0.12.2
+./verify.sh
 ```
 
-Three replies mean the link works. Check what is running, then remove the lab:
+```
+Checking lab first-lab
+  PASS  n1 is running
+  PASS  n1 eth1 has 10.0.12.1/30
+  PASS  n2 is running
+  PASS  n2 eth1 has 10.0.12.2/30
+  PASS  n1 pings n2 (10.0.12.1 -> 10.0.12.2), 0% loss
+
+All checks passed.
+```
+
+Any `FAIL` line says which check failed. If every check passes, Containerlab is installed and working.
+
+### Remove the lab
 
 ```bash
-containerlab inspect --all
 containerlab destroy -t first-lab.clab.yml
 ```
 
