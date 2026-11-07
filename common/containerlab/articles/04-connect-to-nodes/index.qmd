@@ -1,0 +1,271 @@
+---
+title: "Part 4: Connecting to the nodes in a lab"
+description: "Reach lab nodes by SSH, docker exec and containerlab exec; connect from another machine with a jump host, a route or a published port; and drive the lab from Python with the inventory Containerlab generates."
+date: 2026-11-07
+order: 4
+categories: [containerlab, workshop]
+---
+
+A lab is only useful once you can get into its nodes. Containerlab gives you several ways in, from a shell on the lab
+host to a Python script that logs in to every router. This part tries each one on the routed lab from
+[Part 3](../03-topology-file/), then verifies them all.
+
+| Method | Works from | Best for |
+|---|---|---|
+| SSH by node name | the lab host | everyday work on one router |
+| `docker exec` | the lab host | Linux hosts, and routers whose login you have lost |
+| `containerlab exec` | the lab host | one command on many nodes at once |
+| SSH through a jump host | any machine that can SSH to the lab host | working from your laptop |
+| A route to the management network | a machine on the same LAN | using desktop tools such as SecureCRT or Wireshark directly |
+| A published port | any machine that can reach the lab host | one service on one node |
+| Generated inventories | the lab host | Ansible, Nornir and Python automation |
+
+## Start the lab
+
+```bash
+cd course/common/containerlab/labs/03-topology
+containerlab deploy -t routed.clab.yml
+```
+
+Run `git pull` in your clone first if you have not fetched the Part 4 files. The commands below assume you are in
+`labs/03-topology` unless they say otherwise.
+
+## SSH by node name
+
+Containerlab adds every node to the lab host's `/etc/hosts` as `clab-<lab>-<node>`, so you can use names instead of
+addresses:
+
+```bash
+ssh clab-routed-srl1
+```
+
+You land at the SR Linux prompt without typing a username or password, because Containerlab does two things at deploy
+time:
+
+- it writes `/etc/ssh/ssh_config.d/clab-routed.conf`, which sets the username (`admin` for SR Linux) and turns off
+  host key checks for the lab's nodes, so a redeployed node does not trigger a warning
+- it copies the SSH public keys in your `~/.ssh` folder onto the SR Linux nodes
+
+If you have no SSH key, SSH asks for the password instead. To create a key, run `ssh-keygen -t ed25519`, then redeploy
+with `containerlab deploy -t routed.clab.yml --reconfigure` so the routers get it.
+
+Logins for the kinds used in this workshop:
+
+| Kind | Username | Password |
+|---|---|---|
+| Nokia SR Linux | `admin` | `NokiaSrl1!` |
+| Cisco XRd | `clab` | `clab@123` |
+| Arista cEOS | `admin` | `admin` |
+| Linux (Alpine) | no SSH server; use `docker exec` | |
+
+## docker exec
+
+Every node is a container, so `docker exec` runs a program inside it. Add `-it` for an interactive session:
+
+| Node | Command | You get |
+|---|---|---|
+| Linux host | `docker exec -it clab-routed-h1 sh` | a shell (use `bash` on images that have it) |
+| Nokia SR Linux | `docker exec -it clab-routed-srl1 sr_cli` | the SR Linux CLI, no login |
+| Cisco XRd | `docker exec -it <node> /pkg/bin/xr_cli.sh` | the IOS XR CLI, after the XRd login |
+| Arista cEOS | `docker exec -it <node> Cli` | the EOS CLI |
+
+Without `-it` you can run a single command and get its output, which is handy in scripts:
+
+```bash
+docker exec clab-routed-h1 ip route
+docker exec clab-routed-srl1 sr_cli "show version"
+```
+
+## containerlab exec: one command on many nodes
+
+`containerlab exec` runs a command on every node in a lab, or on the nodes that match a label. Containerlab labels
+each node with its name (`clab-node-name`) and kind (`clab-node-kind`):
+
+```bash
+# both routers
+containerlab exec -t routed.clab.yml --label clab-node-kind=nokia_srlinux --cmd "sr_cli show version"
+
+# one host
+containerlab exec -t routed.clab.yml --label clab-node-name=h1 --cmd "ip -4 addr show eth1"
+```
+
+The output is grouped by node.
+
+## Connect from another machine
+
+The names in `/etc/hosts` and the SSH settings only exist on the lab host. From your laptop you have three options.
+
+### Through a jump host (works anywhere)
+
+SSH can hop through the lab host to a node in one command. The node's name is looked up on the lab host, so names
+still work:
+
+```bash
+ssh -J you@labhost admin@clab-routed-srl1
+```
+
+Replace `you@labhost` with your login on the lab host. You are asked for the lab host password, then the router
+password. This works from Linux, macOS and Windows 10 or later (OpenSSH is built in), and only needs SSH access to the
+lab host. To make it permanent, add this to `~/.ssh/config` on your laptop:
+
+```
+Host clab-*
+    ProxyJump you@labhost
+```
+
+Then `ssh admin@clab-routed-srl1` works directly from the laptop.
+
+### A route to the management network (same LAN)
+
+Containerlab lets other machines reach the management network through the lab host. Add a route on your laptop,
+replacing `192.168.0.201` with the lab host's address:
+
+```bash
+# Ubuntu (lasts until reboot)
+sudo ip route add 172.20.20.0/24 via 192.168.0.201
+```
+
+```powershell
+# Windows, in an administrator PowerShell (-p keeps it after a reboot)
+route -p add 172.20.20.0 mask 255.255.255.0 192.168.0.201
+```
+
+Then connect to the node's management address, for example `ssh admin@172.20.20.11`, or open a SecureCRT session to
+it. Use addresses rather than names, since the names only exist on the lab host. The route only works when the laptop
+and the lab host are on the same network; across the internet, use the jump host. After a redeploy, a node has a new
+host key, so remove the old one with `ssh-keygen -R 172.20.20.11` if SSH warns about it.
+
+### A published port
+
+A node can publish one of its ports on the lab host, like `docker run -p`. Add `ports` to the node in the topology
+file:
+
+```yaml
+    srl1:
+      kind: nokia_srlinux
+      ports:
+        - 2201:22
+```
+
+After a redeploy, `ssh -p 2201 admin@labhost` reaches srl1's SSH server. This suits one service on one node; for many
+nodes, the jump host is simpler.
+
+## Use the generated inventories
+
+Containerlab writes inventory files into the lab folder (`clab-routed/`) on every deploy:
+
+| File | Used by |
+|---|---|
+| `ansible-inventory.yml` | Ansible: nodes grouped by kind, with addresses and the kind's login |
+| `nornir-simple-inventory.yml` | Nornir's SimpleInventory |
+| `topology-data.json` | your own scripts: every node's name, kind, image and management address, and every link |
+
+Because they are rebuilt on each deploy, they always match the running lab. Here is `show_version.py` from
+`labs/04-connect`, which reads `topology-data.json` and logs in to every SR Linux router:
+
+```python
+import json
+import sys
+
+from netmiko import ConnectHandler
+
+data_file = sys.argv[1] if len(sys.argv) > 1 else "../03-topology/clab-routed/topology-data.json"
+with open(data_file) as f:
+    nodes = json.load(f)["nodes"]
+
+for name, node in sorted(nodes.items()):
+    if node["kind"] != "nokia_srlinux":
+        continue
+    conn = ConnectHandler(device_type="nokia_srl", host=node["mgmt-ipv4-address"],
+                          username="admin", password="NokiaSrl1!")
+    output = conn.send_command("show version")
+    conn.disconnect()
+    version = next((line.split(":", 1)[1].strip() for line in output.splitlines()
+                    if line.startswith("Software Version")), "unknown")
+    print(f"{name:6} {node['mgmt-ipv4-address']:15} SR Linux {version}")
+```
+
+Ubuntu does not let `pip` install into the system Python, so install Netmiko in a virtual environment once:
+
+```bash
+sudo apt install -y python3-venv
+python3 -m venv ~/clab-venv
+~/clab-venv/bin/pip install netmiko
+```
+
+Then run the script:
+
+```bash
+cd ../04-connect
+~/clab-venv/bin/python show_version.py
+```
+
+```
+srl1   172.20.20.11    SR Linux v26.7.2
+srl2   172.20.20.12    SR Linux v26.7.2
+```
+
+## Verify
+
+Run each check on the lab host.
+
+| Step | Command | You should see |
+|---|---|---|
+| 1. Names | `grep clab-routed /etc/hosts` | four lines: `clab-routed-srl1`, `-srl2`, `-h1` and `-h2` with their addresses |
+| 2. SSH by name | `ssh clab-routed-srl1`, then `show version`, then `quit` | the SR Linux prompt with no password (or a password prompt if you have no SSH key), then `Software Version` |
+| 3. docker exec | `docker exec clab-routed-h1 hostname` | `h1` |
+| 4. containerlab exec | `containerlab exec -t routed.clab.yml --label clab-node-kind=nokia_srlinux --cmd "sr_cli show version"` | a `Software Version` line for each of srl1 and srl2 |
+| 5. Inventories | `ls clab-routed/` | `ansible-inventory.yml`, `nornir-simple-inventory.yml` and `topology-data.json` among the files |
+| 6. Python | `~/clab-venv/bin/python ../04-connect/show_version.py clab-routed/topology-data.json` | one line each for srl1 and srl2 with the SR Linux version |
+| 7. From your laptop | `ssh -J you@labhost admin@clab-routed-srl1` | the SR Linux prompt after both passwords |
+
+Or run steps 1 to 6 at once from `labs/04-connect`. `PYTHON` tells the script which Python has Netmiko:
+
+```bash
+cd ../04-connect
+PYTHON=~/clab-venv/bin/python ./verify.sh
+```
+
+```
+Checking connection methods on lab routed
+  PASS  /etc/hosts has entries for all 4 nodes
+  PASS  docker exec opens a shell on h1
+  PASS  docker exec runs the SR Linux CLI on srl1
+  PASS  containerlab exec ran on both routers
+  PASS  ssh clab-routed-srl1 logs in with your SSH key
+  PASS  lab folder has ansible-inventory.yml
+  PASS  lab folder has nornir-simple-inventory.yml
+  PASS  lab folder has topology-data.json
+  PASS  show_version.py reached both routers
+
+All checks passed.
+```
+
+`SKIP` means a check could not run on your setup, such as having no SSH key or no Netmiko; it is not a failure. Step 7
+runs on your laptop, so the script cannot check it.
+
+## Remove the lab
+
+```bash
+cd ../03-topology
+containerlab destroy -t routed.clab.yml
+```
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `ssh clab-routed-srl1` asks for a password | You had no SSH key when the lab was deployed. Create one with `ssh-keygen -t ed25519` and redeploy with `--reconfigure`, or type the password |
+| `Could not resolve hostname clab-routed-srl1` on your laptop | Names only exist on the lab host. Use the jump host, or the management address with a route |
+| SSH from the laptop to 172.20.20.x times out | Check the route (`ip route` or `route print`), that the laptop is on the lab host's LAN, and that the lab is running |
+| `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED` | The node was redeployed and has a new key. Run `ssh-keygen -R <address>` and connect again |
+| `docker exec ... xr_cli.sh` prints a terminal error | Add `-it`; the XRd CLI needs an interactive terminal |
+| `ModuleNotFoundError: No module named 'netmiko'` | Run the script with the virtual environment's Python: `~/clab-venv/bin/python` |
+
+## Next
+
+Part 5 moves the lab to the cloud: running one lab across several AWS virtual machines.
+
+**Sources:** [containerlab exec](https://containerlab.dev/cmd/exec/) ·
+[Network wiring and external access](https://containerlab.dev/manual/network/) ·
+[Node properties](https://containerlab.dev/manual/nodes/) · [Inventory](https://containerlab.dev/manual/inventory/)

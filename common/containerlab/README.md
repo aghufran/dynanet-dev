@@ -13,7 +13,7 @@ files you run.
 | 1 | Installing Containerlab | [Part 1](https://dynanet.dev/workshops/containerlab/01-install-containerlab/) | [`labs/01-first-lab`](labs/01-first-lab) |
 | 2 | Loading network OS images into Docker | [Part 2](https://dynanet.dev/workshops/containerlab/02-load-images/) | [`labs/02-images`](labs/02-images) |
 | 3 | Writing a lab topology file | [Part 3](https://dynanet.dev/workshops/containerlab/03-topology-file/) | [`labs/03-topology`](labs/03-topology) |
-| 4 | Connecting to the nodes in a lab | coming soon | |
+| 4 | Connecting to the nodes in a lab | [Part 4](https://dynanet.dev/workshops/containerlab/04-connect-to-nodes/) | [`labs/04-connect`](labs/04-connect) (uses the Part 3 lab) |
 | 5 | Running a lab across several cloud VMs (AWS) | coming soon | [`cloud/`](cloud) |
 
 ## Quick start
