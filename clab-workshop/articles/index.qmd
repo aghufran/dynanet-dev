@@ -16,7 +16,7 @@ listing:
 
 A hands-on workshop on using [Containerlab](https://containerlab.dev) for networking labs. Work through the parts in
 order. The lab files are in the workshop repository:
-[github.com/aghufran/dynanet-dev](https://github.com/aghufran/dynanet-dev/tree/main/common/containerlab), in `common/containerlab`.
+[github.com/aghufran/dynanet-dev](https://github.com/aghufran/dynanet-dev/tree/main/clab-workshop), in `common/containerlab`.
 
 | Part | Topic | Status |
 |---|---|---|

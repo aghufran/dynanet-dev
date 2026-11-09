@@ -212,7 +212,7 @@ First update your copy of the workshop files, then deploy:
 
 ```bash
 cd ~/dynanet-dev && git pull
-cd ~/dynanet-dev/common/containerlab/labs/03-topology
+cd ~/dynanet-dev/clab-workshop/labs/03-topology
 containerlab deploy -t routed.clab.yml
 ```
 

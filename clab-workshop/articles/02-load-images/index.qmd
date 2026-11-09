@@ -237,7 +237,7 @@ First update your copy of the workshop files from Part 1, then deploy:
 
 ```bash
 cd ~/dynanet-dev && git pull
-cd ~/dynanet-dev/common/containerlab/labs/02-images
+cd ~/dynanet-dev/clab-workshop/labs/02-images
 containerlab deploy -t srl-pair.clab.yml
 ```
 

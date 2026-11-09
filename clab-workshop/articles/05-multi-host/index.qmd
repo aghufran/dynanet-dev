@@ -94,7 +94,7 @@ You need about **6 GB of free memory** and 4 vCPUs.
 
 ```bash
 cd ~/dynanet-dev && git pull
-cd ~/dynanet-dev/common/containerlab/labs/05-multihost
+cd ~/dynanet-dev/clab-workshop/labs/05-multihost
 ./up.sh
 ```
 
@@ -188,7 +188,7 @@ machines or VMs that can reach each other, such as two cloud instances in the sa
 2. **Note each host's address on the underlay**, for example with `ip -4 addr`. In the cloud, use the private
    addresses, not the public ones.
 3. **Copy the lab folders**: `site1` to the first host and `site2` to the second (both are in
-   `~/dynanet-dev/common/containerlab/labs/05-multihost/`).
+   `~/dynanet-dev/clab-workshop/labs/05-multihost/`).
 4. **Point each tunnel at the other host**: in `site1.clab.yml`, set `remote:` to the second host's address; in
    `site2.clab.yml`, set it to the first host's address.
 5. **Allow the tunnel through the firewall** on both hosts: UDP port 4789 from the other host. With Ubuntu's firewall:

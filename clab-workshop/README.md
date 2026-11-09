@@ -1,6 +1,6 @@
 # Containerlab Workshop
 
-Part of [aghufran/dynanet-dev](https://github.com/aghufran/dynanet-dev): shared material for every course.
+Part of [aghufran/dynanet-dev](https://github.com/aghufran/dynanet-dev).
 
 Hands-on material for building networking labs with [Containerlab](https://containerlab.dev).
 The full articles are published at **https://dynanet.dev/workshops/containerlab/**; this folder holds the lab
@@ -22,7 +22,7 @@ On an Ubuntu host with Docker and Containerlab installed (see Part 1):
 
 ```bash
 git clone https://github.com/aghufran/dynanet-dev.git
-cd dynanet-dev/common/containerlab/labs/01-first-lab
+cd dynanet-dev/clab-workshop/labs/01-first-lab
 containerlab deploy -t first-lab.clab.yml
 ./verify.sh                     # every check should say PASS
 containerlab destroy -t first-lab.clab.yml
@@ -33,7 +33,7 @@ Every lab folder has a `verify.sh` that checks the running lab and prints PASS o
 ## Folder layout
 
 ```
-articles/   workshop articles (Quarto .qmd), published to dynanet.dev by the repo's publish.sh
+articles/   workshop articles (Quarto .qmd), published to dynanet.dev by the repository's publish.sh
 labs/       one folder per lab: the .clab.yml topology and any startup configs
 scripts/    helper scripts used in the labs
 cloud/      material for running labs across cloud VMs (AWS)
@@ -47,4 +47,4 @@ that need a vendor account to download (for example Cisco XRd); the article for 
 ## Licence
 
 The articles are licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); the lab files and scripts are licensed MIT.
-See [`LICENSE.md`](../../LICENSE.md) at the top of the repository.
+See [`LICENSE.md`](../LICENSE.md) at the top of the repository.

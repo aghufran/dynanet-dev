@@ -28,12 +28,12 @@ Update your copy of the workshop files, then deploy the Part 3 lab:
 
 ```bash
 cd ~/dynanet-dev && git pull
-cd ~/dynanet-dev/common/containerlab/labs/03-topology
+cd ~/dynanet-dev/clab-workshop/labs/03-topology
 containerlab deploy -t routed.clab.yml
 ```
 
 To recall the lab's layout, open it in the [topology viewer](https://graphs.dynanet.dev/topology?example=routed).
-The commands below assume you are in `~/dynanet-dev/common/containerlab/labs/03-topology` unless they say otherwise.
+The commands below assume you are in `~/dynanet-dev/clab-workshop/labs/03-topology` unless they say otherwise.
 
 ## SSH by node name
 
@@ -252,7 +252,7 @@ runs on your laptop, so the script cannot check it.
 ## Remove the lab
 
 ```bash
-cd ~/dynanet-dev/common/containerlab/labs/03-topology
+cd ~/dynanet-dev/clab-workshop/labs/03-topology
 containerlab destroy -t routed.clab.yml
 ```
 

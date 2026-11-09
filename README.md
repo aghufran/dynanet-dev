@@ -1,45 +1,34 @@
-# Course material
+# dynanet-dev
 
-Training material for networking courses: articles, lab files and scripts.
+Hands-on training material on networks, labs and automation, by Abid Ghufran. The workshops are published at
+**https://dynanet.dev/workshops/**, and this repository holds their articles, lab files and scripts.
 
-- **`common/`** holds material shared by every course, one folder per topic. The articles are published at
-  **https://dynanet.dev/workshops/**.
-- **`institutions/`** holds the courses delivered to individual institutions. Each is its own repository, added here as a
-  git submodule (see [`institutions/README.md`](institutions/README.md)).
+## Workshops
 
-## Topics
-
-| Topic | Folder | Website |
+| Workshop | Folder | Website |
 |---|---|---|
-| Containerlab for networking labs | [`common/containerlab`](common/containerlab) | https://dynanet.dev/workshops/containerlab/ |
+| Containerlab Workshop: build networking labs from containers, on one host or across several | [`clab-workshop`](clab-workshop) | https://dynanet.dev/workshops/containerlab/ |
 
 ## Get the material
 
 ```bash
 git clone https://github.com/aghufran/dynanet-dev.git
-cd dynanet-dev/common/containerlab
+cd dynanet-dev/clab-workshop
 ```
+
+Each workshop folder has its own README with the parts, the lab files and the requirements. All instructions target
+Ubuntu Linux (22.04, 24.04 and 26.04 LTS), and every lab has a `verify.sh` that checks it is working.
 
 ## Layout
 
 ```
-common/<topic>/
-  articles/NN-short-name/index.qmd   articles (Quarto), published to dynanet.dev
-  labs/NN-name/                      Containerlab topologies (.clab.yml) and startup configs
+<workshop>/
+  articles/NN-short-name/index.qmd   the workshop articles, published to dynanet.dev
+  labs/NN-name/                      Containerlab topologies, startup configs and verify.sh
   scripts/                           helper scripts
-institutions/<institution>/          per-institution course (git submodule)
 workshops-index.qmd                  the dynanet.dev/workshops/ landing page
-publish.sh                           maintainer only: publishes common/*/articles to dynanet.dev
+publish.sh                           maintainer only: publishes the articles to dynanet.dev
 ```
-
-## Maintainer notes
-
-- Write articles in `common/<topic>/articles/` (same Quarto format as dynanet.dev posts, see
-  `~/webstack/docs/WRITING-ARTICLES.md`). Each article folder has an `order:` field for its part number.
-- Publish with `./publish.sh`. Never edit the copies in `~/webstack/site/workshops/`; they are overwritten each time.
-- Test every lab on NetDev1 before publishing the article that uses it.
-- `draft: true` leaves an article out of the build entirely (Quarto renders it as a blank page).
-- All instructions target Ubuntu Linux (22.04, 24.04, 26.04 LTS).
 
 ## Licence
 

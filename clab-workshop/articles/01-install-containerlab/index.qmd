@@ -165,7 +165,7 @@ Get the workshop files into your home folder, then deploy the lab. Every later p
 ```bash
 cd ~
 git clone https://github.com/aghufran/dynanet-dev.git
-cd ~/dynanet-dev/common/containerlab/labs/01-first-lab
+cd ~/dynanet-dev/clab-workshop/labs/01-first-lab
 containerlab deploy -t first-lab.clab.yml
 ```
 
