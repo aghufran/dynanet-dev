@@ -33,10 +33,10 @@ Every lab folder has a `verify.sh` that checks the running lab and prints PASS o
 ## Folder layout
 
 ```
-articles/   workshop articles (Quarto .qmd), published to dynanet.dev by the repository's publish.sh
-labs/       one folder per lab: the .clab.yml topology and any startup configs
-scripts/    helper scripts used in the labs
-cloud/      material for running labs across cloud VMs (AWS)
+lab-manual/  the lab manual for each part (Quarto .qmd), published to dynanet.dev by the repository's publish.sh
+labs/        one folder per lab: the .clab.yml topology and any startup configs
+scripts/     helper scripts used in the labs
+cloud/       material for running labs across cloud VMs (AWS)
 ```
 
 ## Requirements

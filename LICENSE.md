@@ -4,7 +4,7 @@ Copyright (c) 2026 Abid Ghufran. This repository uses two licences.
 
 | What | Licence | Full text |
 |---|---|---|
-| Articles and written material: everything under `*/articles/`, the READMEs, and the pages published at https://dynanet.dev | [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) | [`LICENSES/CC-BY-4.0.txt`](LICENSES/CC-BY-4.0.txt) |
+| Articles and written material: everything under `*/lab-manual/`, the READMEs, and the pages published at https://dynanet.dev | [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) | [`LICENSES/CC-BY-4.0.txt`](LICENSES/CC-BY-4.0.txt) |
 | Labs and code: everything under `*/labs/` and `*/scripts/` (topology files, startup configs, `verify.sh` and other scripts), and `publish.sh` | [MIT](https://opensource.org/license/mit) | [`LICENSES/MIT.txt`](LICENSES/MIT.txt) |
 
 **In short:** you may use, share and adapt the articles for any purpose, including teaching, as long as you credit

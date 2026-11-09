@@ -1,7 +1,7 @@
 # dynanet-dev
 
 Hands-on training material on networks, labs and automation, by Abid Ghufran. The workshops are published at
-**https://dynanet.dev/workshops/**, and this repository holds their articles, lab files and scripts.
+**https://dynanet.dev/workshops/**, and this repository holds their lab manuals, lab files and scripts.
 
 ## Workshops
 
@@ -23,7 +23,7 @@ Ubuntu Linux (22.04, 24.04 and 26.04 LTS), and every lab has a `verify.sh` that 
 
 ```
 <workshop>/
-  articles/NN-short-name/index.qmd   the workshop articles, published to dynanet.dev
+  lab-manual/NN-short-name/index.qmd the lab manual for each part, published to dynanet.dev
   labs/NN-name/                      Containerlab topologies, startup configs and verify.sh
   scripts/                           helper scripts
 workshops-index.qmd                  the dynanet.dev/workshops/ landing page
