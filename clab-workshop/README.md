@@ -3,12 +3,12 @@
 Part of [aghufran/dynanet-dev](https://github.com/aghufran/dynanet-dev).
 
 Hands-on material for building networking labs with [Containerlab](https://containerlab.dev).
-The full articles are published at **https://dynanet.dev/workshops/containerlab/**; this folder holds the lab
+The full lab manuals are published at **https://dynanet.dev/workshops/containerlab/**; this folder holds the lab
 files you run.
 
 ## Parts
 
-| Part | Topic | Article | Lab files |
+| Part | Topic | Lab manual | Lab files |
 |---|---|---|---|
 | 1 | Installing Containerlab | [Part 1](https://dynanet.dev/workshops/containerlab/01-install-containerlab/) | [`labs/01-first-lab`](labs/01-first-lab) |
 | 2 | Loading network OS images into Docker | [Part 2](https://dynanet.dev/workshops/containerlab/02-load-images/) | [`labs/02-images`](labs/02-images) |
@@ -42,9 +42,9 @@ cloud/       material for running labs across cloud VMs (AWS)
 ## Requirements
 
 An Ubuntu 22.04, 24.04 or 26.04 LTS host (desktop, server or VM) with 4 vCPUs and 16 GB of RAM covers every lab. Some parts use network OS images
-that need a vendor account to download (for example Cisco XRd); the article for each part says which.
+that need a vendor account to download (for example Cisco XRd); the lab manual for each part says which.
 
 ## Licence
 
-The articles are licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); the lab files and scripts are licensed MIT.
+The lab manuals are licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); the lab files and scripts are licensed MIT.
 See [`LICENSE.md`](../LICENSE.md) at the top of the repository.

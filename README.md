@@ -32,5 +32,5 @@ publish.sh                           maintainer only: publishes the articles to 
 
 ## Licence
 
-Articles and written material: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Labs and code: MIT.
+Lab manuals and written material: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Labs and code: MIT.
 See [`LICENSE.md`](LICENSE.md) for which licence covers what.
