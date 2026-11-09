@@ -27,7 +27,7 @@ Ubuntu Linux (22.04, 24.04 and 26.04 LTS), and every lab has a `verify.sh` that 
   labs/NN-name/                      Containerlab topologies, startup configs and verify.sh
   scripts/                           helper scripts
 workshops-index.qmd                  the dynanet.dev/workshops/ landing page
-publish.sh                           maintainer only: publishes the articles to dynanet.dev
+publish.sh                           maintainer only: publishes the lab manuals to dynanet.dev
 ```
 
 ## Licence
