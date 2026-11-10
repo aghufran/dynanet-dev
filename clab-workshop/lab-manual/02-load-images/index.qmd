@@ -56,7 +56,7 @@ docker pull alpine:3
 docker images alpine
 ```
 
-The image is about 13 MB. It has the basic network tools a lab host needs: `ip`, `ping` and `traceroute`.
+The image is small: `docker images` reports 8 to 13 MB, depending on the Docker version. It has the basic network tools a lab host needs: `ip`, `ping` and `traceroute`.
 
 | Setting | Value |
 |---|---|

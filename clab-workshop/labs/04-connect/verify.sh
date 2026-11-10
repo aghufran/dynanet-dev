@@ -39,12 +39,17 @@ n=$(containerlab exec -t "$topo" --label clab-node-kind=cisco_xrd --cmd '/pkg/bi
 #    password prompt so this check needs no extra packages.
 #    IOS XR accepts one new SSH session per second, so the SSH checks pause briefly between logins.
 askpass=$(mktemp); printf '#!/bin/sh\necho "clab@123"\n' > "$askpass"; chmod 700 "$askpass"
+#    The SSH server starts a little after the CLI answers, so each login is retried for up to 2 minutes.
 for n in xrd1 xrd2; do
-    SSH_ASKPASS="$askpass" SSH_ASKPASS_REQUIRE=force timeout 30 \
-        ssh -o ConnectTimeout=10 -o PubkeyAuthentication=no "clab-$lab-$n" "show version" </dev/null 2>/dev/null \
-        | grep -q 'Cisco IOS XR Software' \
-        && pass "ssh clab-$lab-$n logs in as clab with the lab password" \
-        || fail "ssh clab-$lab-$n failed (is the router still starting? wait a minute and retry)"
+    ok=no
+    for _ in $(seq 1 24); do
+        SSH_ASKPASS="$askpass" SSH_ASKPASS_REQUIRE=force timeout 30 \
+            ssh -o ConnectTimeout=10 -o PubkeyAuthentication=no "clab-$lab-$n" "show version" </dev/null 2>/dev/null \
+            | grep -q 'Cisco IOS XR Software' && { ok=yes; break; }
+        sleep 5
+    done
+    [[ $ok == yes ]] && pass "ssh clab-$lab-$n logs in as clab with the lab password" \
+        || fail "ssh clab-$lab-$n failed (check the login clab / clab@123 and that SSH is enabled in the startup config)"
 done
 rm -f -- "$askpass"
 
