@@ -1,6 +1,6 @@
 ---
 title: "Part 2: Loading network OS images"
-description: "Get router and switch images into Docker so Containerlab can use them: pull Nokia SR Linux, import Arista cEOS, load Cisco XRd, and build VM-based images with vrnetlab."
+description: "Get network OS images into Docker so Containerlab can use them: pull a public image, import Arista cEOS, load Cisco XRd, and build VM-based images with vrnetlab. Then test Cisco XRd with a two-router lab."
 image: ../social-card.png
 image-alt: "Containerlab workshop on dynanet.dev"
 date: 2026-11-07
@@ -17,14 +17,21 @@ This part shows all four routes on Ubuntu, then runs a two-router lab to prove a
 
 | Route | Typical images | Account needed | Command |
 |---|---|---|---|
-| Pull from a public registry | Nokia SR Linux, FRRouting, Linux hosts | No | `docker pull` |
+| Pull from a public registry | Linux hosts, FRRouting | No | `docker pull` |
 | Import a vendor download | Arista cEOS | Free account | `docker import` |
 | Load a vendor download | Cisco XRd | Cisco account with entitlement | `docker load` |
 | Build from a VM disk (vrnetlab) | Cisco Catalyst 8000V, XRv 9000, Juniper vJunos, Nokia SR OS | Varies | `make` |
 
+::: {.callout-important}
+## The workshop labs use Cisco XRd
+The routers in the labs of Parts 2 to 5 run Cisco IOS XR, as the XRd container image. The workshop cannot give you
+this image: you get it from Cisco yourself (Route 3 below). You also need the free Alpine Linux image from Route 1.
+The other two routes are here for reference, for when you build labs with other network operating systems.
+:::
+
 ## Docker image basics
 
-An image is named `repository:tag`, for example `ghcr.io/nokia/srlinux:26.7.2`. The tag is usually the software
+An image is named `repository:tag`, for example `ios-xr/xrd-control-plane:7.11.2`. The tag is usually the software
 version. A topology file refers to an image by exactly this name, so pick clear names and keep them.
 
 | Task | Command |
@@ -39,25 +46,27 @@ not. Pulling only works for public images, so vendor images must be loaded befor
 
 Network OS images are large. Allow 3–5 GB of disk per image, and check free space with `df -h /var/lib/docker`.
 
-## Route 1: pull a public image (Nokia SR Linux)
+## Route 1: pull a public image (Alpine Linux)
 
-Nokia publishes SR Linux in the GitHub container registry, free for anyone to use. The workshop labs use version
-**26.7.2**, so that everyone runs the same release and sees the same output:
+Images in a public registry need no account: `docker pull` downloads them. The labs in Parts 3 to 5 use Alpine Linux,
+a very small Linux image, for the hosts at the edge of the network:
 
 ```bash
-docker pull ghcr.io/nokia/srlinux:26.7.2
-docker images ghcr.io/nokia/srlinux
+docker pull alpine:3
+docker images alpine
 ```
 
-The download is about 750 MB and unpacks to about 3.2 GB. Available versions are listed on the
-[SR Linux container image page](https://github.com/nokia/srlinux-container-image).
+The image is about 13 MB. It has the basic network tools a lab host needs: `ip`, `ping` and `traceroute`.
 
 | Setting | Value |
 |---|---|
-| Containerlab kind | `nokia_srlinux` |
-| Login | `admin` / `NokiaSrl1!` |
-| Interface names in the topology | `ethernet-1/1`, `ethernet-1/2`, … |
-| Memory per node | about 1.8 GB |
+| Containerlab kind | `linux` |
+| Login | none: open a shell with `docker exec` (Part 4) |
+| Interface names in the topology | `eth1`, `eth2`, … |
+| Memory per node | a few MB |
+
+Open-source routing software such as [FRRouting](https://frrouting.org) is published in public registries too, and
+is pulled the same way.
 
 ## Route 2: import a vendor download (Arista cEOS)
 
@@ -87,13 +96,14 @@ default.
 
 ## Route 3: load a vendor download (Cisco XRd)
 
-Cisco XRd runs IOS XR as a container. The **control-plane** image is the one for labs; the vRouter image is for
-forwarding performance and needs more host setup.
+Cisco XRd runs IOS XR as a container, and it is the router used in the labs of this workshop. The **control-plane**
+image is the one for labs; the vRouter image is for forwarding performance and needs more host setup.
 
 ### Get and load the image
 
 1. Log in to [software.cisco.com](https://software.cisco.com) with a Cisco account that is entitled to XRd, and
-   download the XRd control-plane archive for your release.
+   download the XRd control-plane archive for your release. If you are a student, ask your institution or instructor
+   how to get access; Cisco decides who may download XRd.
 2. Copy it to the lab host and unpack it. It contains the image file `xrd-control-plane-container-x64.dockerv1.tgz`
    and signature files:
 
@@ -117,6 +127,9 @@ forwarding performance and needs more host setup.
 
 Allow about 3 GB of disk for the 7.11.2 image. `docker images` reports between 1.3 and 2.7 GB, depending on the Docker version.
 
+The workshop labs name the image `ios-xr/xrd-control-plane:7.11.2`. If you have another release, tag it with its own
+version and change the `image:` lines in the lab topology files to match.
+
 ### Prepare the host
 
 XRd opens many file watches. Raise the Linux limits once, permanently:
@@ -138,7 +151,7 @@ run `scripts/host-check -p xrd-control-plane -e docker` from a clone of it.
 | Containerlab kind | `cisco_xrd` |
 | Login | `clab` / `clab@123` |
 | Interface names in the topology | `Gi0-0-0-0`, `Gi0-0-0-1`, … (IOS XR `GigabitEthernet0/0/0/0`, …) |
-| Memory per node | about 2.5 GB |
+| Memory per node | about 1.6 GB in the workshop labs; allow 2.5 GB for routers that run routing protocols |
 
 The `clab` login is created by the configuration Containerlab generates for XRd. If you give an XRd node your own
 `startup-config`, Containerlab uses your file instead, so include a user and SSH in it, or SSH to the node is refused:
@@ -148,6 +161,9 @@ username clab
  group root-lr
  group cisco-support
  secret clab@123
+!
+line default
+ transport input ssh
 !
 ssh server v2
 ```
@@ -196,40 +212,61 @@ use it in your topology.
 VM-based nodes boot far more slowly and use more memory than native container images. Prefer a container image when
 the vendor offers one.
 
-## Test an image: a two-router SR Linux lab
+## Test the image: a two-router XRd lab
 
-The workshop repository has a lab that needs no vendor account: two SR Linux routers joined by one link. A small
-startup configuration gives each router an address on the link, so you can prove the image works end to end.
+The workshop repository has a lab with two XRd routers joined by one link. A small startup configuration gives each
+router an address on the link, so you can prove the image works end to end.
 
 ```yaml
-name: srl-pair
+name: xrd-pair
 
 topology:
   nodes:
-    srl1:
-      kind: nokia_srlinux
-      image: ghcr.io/nokia/srlinux:26.7.2
-      startup-config: srl1.cli
-    srl2:
-      kind: nokia_srlinux
-      image: ghcr.io/nokia/srlinux:26.7.2
-      startup-config: srl2.cli
+    xrd1:
+      kind: cisco_xrd
+      image: ios-xr/xrd-control-plane:7.11.2
+      startup-config: xrd1.cfg
+    xrd2:
+      kind: cisco_xrd
+      image: ios-xr/xrd-control-plane:7.11.2
+      startup-config: xrd2.cfg
 
   links:
-    - endpoints: ["srl1:ethernet-1/1", "srl2:ethernet-1/1"]
+    # Gi0-0-0-0 here is GigabitEthernet0/0/0/0 inside the router.
+    - endpoints: ["xrd1:Gi0-0-0-0", "xrd2:Gi0-0-0-0"]
 ```
 
-See it drawn in the [topology viewer](https://graphs.dynanet.dev/topology?example=srl).
+See it drawn in the [topology viewer](https://graphs.dynanet.dev/topology?example=xrd).
 
-`srl1.cli` holds SR Linux CLI commands that Containerlab applies at boot (`srl2.cli` is the same with `10.0.12.2`):
+`xrd1.cfg` is an IOS XR configuration that the router loads when it starts (`xrd2.cfg` is the same with `xrd2`,
+`to xrd1` and `10.0.12.2`):
 
 ```
-set / interface ethernet-1/1 admin-state enable
-set / interface ethernet-1/1 subinterface 0 ipv4 admin-state enable
-set / interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30
-set / network-instance default type default
-set / network-instance default interface ethernet-1/1.0
+hostname xrd1
+username clab
+ group root-lr
+ group cisco-support
+ secret clab@123
+!
+line default
+ transport input ssh
+!
+lldp
+!
+interface GigabitEthernet0/0/0/0
+ description to xrd2
+ ipv4 address 10.0.12.1 255.255.255.252
+!
+ssh server v2
+end
 ```
+
+| Lines | What they do |
+|---|---|
+| `username clab` to `secret clab@123` | Create the login you use over SSH |
+| `line default`, `transport input ssh` and `ssh server v2` | Turn on the SSH server |
+| `lldp` | Lets the two routers discover each other |
+| `interface GigabitEthernet0/0/0/0` | Puts an address on the link. The topology file calls this interface `Gi0-0-0-0` |
 
 ### Deploy
 
@@ -238,31 +275,33 @@ First update your copy of the workshop files from Part 1, then deploy:
 ```bash
 cd ~/dynanet-dev && git pull
 cd ~/dynanet-dev/clab-workshop/labs/02-images
-containerlab deploy -t srl-pair.clab.yml
+containerlab deploy -t xrd-pair.clab.yml
 ```
 
-The deploy takes about 15 seconds once the image is on the host. It ends with a table listing
-`clab-srl-pair-srl1` and `clab-srl-pair-srl2`, both `running`.
+The command finishes in a few seconds. It ends with a table listing `clab-xrd-pair-xrd1` and `clab-xrd-pair-xrd2`,
+both `running`. IOS XR then needs about another minute to start and load its configuration, so wait a moment before
+you log in.
 
 ### Verify
 
-Log in to `srl1` and run each check. If SSH asks for a password, it is `NokiaSrl1!`; if you have an SSH key, you
-are logged straight in.
+Log in to `xrd1`. The password is `clab@123`:
 
 ```bash
-ssh admin@clab-srl-pair-srl1
+ssh clab@clab-xrd-pair-xrd1
 ```
 
-| Step | Command (on srl1) | You should see |
-|---|---|---|
-| 1. Software | `show version` | `Software Version : v26.7.2` and `Chassis Type : 7220 IXR-D2L` |
-| 2. Link up | `show interface ethernet-1/1` | `ethernet-1/1 is up` |
-| 3. Address | `show interface ethernet-1/1.0` | `IPv4 addr : 10.0.12.1/30` |
-| 4. Neighbour | `show system lldp neighbor` | a row for `ethernet-1/1` with Neighbor System Name `srl2` |
-| 5. Reachability | `ping 10.0.12.2 network-instance default -c 3` | `3 packets transmitted, 3 received, 0% packet loss` |
+You get the IOS XR prompt, `RP/0/RP0/CPU0:xrd1#`. Run each check:
 
-Leave the router with `quit`. If step 4 or 5 fails straight after the deploy, wait 30 seconds and try again; the
-routers take a moment to finish starting.
+| Step | Command (on xrd1) | You should see |
+|---|---|---|
+| 1. Software | `show version` | `Cisco IOS XR Software, Version 7.11.2` and `cisco XRd Control Plane` |
+| 2. Link up | `show interfaces GigabitEthernet0/0/0/0` | `GigabitEthernet0/0/0/0 is up, line protocol is up` |
+| 3. Address | `show ipv4 interface brief` | a row for `GigabitEthernet0/0/0/0` with `10.0.12.1`, `Up` and `Up` |
+| 4. Neighbour | `show lldp neighbors` | a row with Device ID `xrd2` and Local Intf `GigabitEthernet0/0/0/0` |
+| 5. Reachability | `ping 10.0.12.2 count 3` | `!!!` and `Success rate is 100 percent (3/3)` |
+
+Leave the router with `exit`. If SSH answers `Connection refused` or `Connection timed out`, or a check fails
+straight after the deploy, the router is still starting: wait 30 seconds and try again.
 
 Or run all the checks at once from the lab folder:
 
@@ -271,27 +310,31 @@ Or run all the checks at once from the lab folder:
 ```
 
 ```
-Checking lab srl-pair
-  PASS  srl1 is running
-  PASS  srl2 is running
-  PASS  srl1 answers the CLI: SR Linux v26.7.2
-  PASS  srl1 ethernet-1/1 is up
-  PASS  srl2 ethernet-1/1 is up
-  PASS  srl1 sees srl2 as an LLDP neighbour
-  PASS  srl1 pings srl2 (10.0.12.1 -> 10.0.12.2), 0% loss
+Checking lab xrd-pair
+  PASS  xrd1 is running
+  PASS  xrd2 is running
+  PASS  xrd1 answers the CLI: IOS XR 7.11.2 LNT
+  PASS  xrd1 GigabitEthernet0/0/0/0 is up
+  PASS  xrd2 GigabitEthernet0/0/0/0 is up
+  PASS  xrd1 sees xrd2 as an LLDP neighbour
+  PASS  xrd1 pings xrd2 (10.0.12.1 -> 10.0.12.2), 100% success
 
 All checks passed.
 ```
 
-Any `FAIL` line says what is wrong; the troubleshooting table below covers the usual causes.
+The script waits for the routers to finish starting before it checks them. Any `FAIL` line says what is wrong; the
+troubleshooting table below covers the usual causes.
 
 ### Remove the lab
 
 ```bash
-containerlab destroy -t srl-pair.clab.yml
+containerlab destroy -t xrd-pair.clab.yml --cleanup
 ```
 
-To try another image, change `kind`, `image` and the interface names to the values in that route's table.
+`--cleanup` also removes the lab folder `clab-xrd-pair`, where XRd keeps its files, so the next deploy starts fresh.
+
+To try another image, change `kind`, `image` and the interface names to the values in that route's table, and remove
+the `startup-config` lines: the two files are IOS XR configuration.
 
 ## Move images between hosts
 
@@ -319,9 +362,10 @@ any case: GitHub rejects files larger than 100 MB.
 | `docker load` reports `invalid tar header` | You passed the outer XRd archive. Unpack it first and load the `.dockerv1.tgz` file inside |
 | `no space left on device` while loading | Free disk space: `docker system df`, then `docker image prune` to remove unused images |
 | XRd node restarts or logs inotify errors | The sysctl limits are not applied. Check with `sysctl fs.inotify.max_user_instances` |
-| An SR Linux node stops straight after starting, on a VM | The VM's virtual CPU lacks the SSSE3 instructions SR Linux needs. Set the VM's CPU model to "host passthrough" |
+| SSH to an XRd node answers `Connection refused` or `Connection timed out` just after a deploy | IOS XR is still starting. Wait a minute and try again |
 | SSH to an XRd node is refused although it has booted | Your own `startup-config` has no user or `ssh server v2`. Add them (see Route 3) and redeploy with `--reconfigure` |
-| `rm -rf clab-<lab>` fails with `Permission denied` | XRd writes files owned by root into the lab folder. Use `sudo rm -rf clab-<lab>`, or just redeploy with `--reconfigure` |
+| `Connection closed` when you open SSH sessions to one router quickly, one after another | IOS XR limits how fast new SSH sessions may start. Wait two seconds between them |
+| `rm -rf clab-<lab>` fails with `Permission denied` | XRd writes files owned by root into the lab folder. Remove the lab with `containerlab destroy --cleanup`, or use `sudo rm -rf clab-<lab>` |
 | vrnetlab node never finishes booting | KVM is missing. Check `kvm-ok`, and on a VM enable nested virtualization |
 
 ## Next
@@ -329,6 +373,6 @@ any case: GitHub rejects files larger than 100 MB.
 Part 3 covers writing a topology file: nodes, kinds, links, startup configurations and management addresses.
 
 **Sources:** [Containerlab kinds](https://containerlab.dev/manual/kinds/) ·
-[SR Linux](https://containerlab.dev/manual/kinds/srl/) · [Arista cEOS](https://containerlab.dev/manual/kinds/ceos/) ·
-[Cisco XRd](https://containerlab.dev/manual/kinds/xrd/) · [Catalyst 8000V](https://containerlab.dev/manual/kinds/vr-c8000v/) ·
+[Cisco XRd](https://containerlab.dev/manual/kinds/xrd/) · [Arista cEOS](https://containerlab.dev/manual/kinds/ceos/) ·
+[Linux container](https://containerlab.dev/manual/kinds/linux/) · [Catalyst 8000V](https://containerlab.dev/manual/kinds/vr-c8000v/) ·
 [vrnetlab](https://containerlab.dev/manual/vrnetlab/) · [xrd-tools](https://github.com/ios-xr/xrd-tools)

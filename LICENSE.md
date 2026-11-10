@@ -11,5 +11,5 @@ Copyright (c) 2026 Abid Ghufran. This repository uses two licences.
 "Abid Ghufran, dynanet.dev" and link to the licence. You may use the lab files and code for anything, as long as you
 keep the copyright and licence notice.
 
-Vendor software used in the labs, such as Cisco XRd, Arista cEOS or Nokia SR Linux images, is not part of this
+Vendor software used in the labs, such as Cisco XRd or Arista cEOS images, is not part of this
 repository and stays under its vendors' licences.

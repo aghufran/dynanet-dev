@@ -41,24 +41,23 @@ Containerlab adds every node to the lab host's `/etc/hosts` as `clab-<lab>-<node
 addresses:
 
 ```bash
-ssh clab-routed-srl1
+ssh clab-routed-xrd1
 ```
 
-You land at the SR Linux prompt without typing a username or password, because Containerlab does two things at deploy
-time:
+SSH asks for the password, `clab@123`, and you land at the IOS XR prompt, `RP/0/RP0/CPU0:xrd1#`. Leave it with
+`exit`.
 
-- it writes `/etc/ssh/ssh_config.d/clab-routed.conf`, which sets the username (`admin` for SR Linux) and turns off
-  host key checks for the lab's nodes, so a redeployed node does not trigger a warning
-- it copies the SSH public keys in your `~/.ssh` folder onto the SR Linux nodes
+You did not have to type a username, because Containerlab writes `/etc/ssh/ssh_config.d/clab-routed.conf` at deploy
+time. That file sets the username for each node (`clab` for XRd) and turns off host key checks for the lab's nodes,
+so a redeployed node does not trigger a warning.
 
-If you have no SSH key, SSH asks for the password instead. To create a key, run `ssh-keygen -t ed25519`, then redeploy
-with `containerlab deploy -t routed.clab.yml --reconfigure` so the routers get it.
+XRd takes its users from the router's own configuration, so you log in with the password from the startup config.
+Containerlab does not copy your SSH keys onto XRd nodes.
 
 Logins for the kinds used in this workshop:
 
 | Kind | Username | Password |
 |---|---|---|
-| Nokia SR Linux | `admin` | `NokiaSrl1!` |
 | Cisco XRd | `clab` | `clab@123` |
 | Arista cEOS | `admin` | `admin` |
 | Linux (Alpine) | no SSH server; use `docker exec` | |
@@ -70,16 +69,18 @@ Every node is a container, so `docker exec` runs a program inside it. Add `-it` 
 | Node | Command | You get |
 |---|---|---|
 | Linux host | `docker exec -it clab-routed-h1 sh` | a shell (use `bash` on images that have it) |
-| Nokia SR Linux | `docker exec -it clab-routed-srl1 sr_cli` | the SR Linux CLI, no login |
-| Cisco XRd | `docker exec -it <node> /pkg/bin/xr_cli.sh` | the IOS XR CLI, after the XRd login |
+| Cisco XRd | `docker exec -it clab-routed-xrd1 /pkg/bin/xr_cli.sh` | the IOS XR CLI, after you log in as `clab` |
 | Arista cEOS | `docker exec -it <node> Cli` | the EOS CLI |
 
 Without `-it` you can run a single command and get its output, which is handy in scripts:
 
 ```bash
 docker exec clab-routed-h1 ip route
-docker exec clab-routed-srl1 sr_cli "show version"
+docker exec clab-routed-xrd1 /pkg/bin/xr_cli "show version"
 ```
+
+On XRd, `/pkg/bin/xr_cli` runs one IOS XR command without a login. Give the full path, because the program is not on
+the container's search path.
 
 ## containerlab exec: one command on many nodes
 
@@ -88,7 +89,7 @@ each node with its name (`clab-node-name`) and kind (`clab-node-kind`):
 
 ```bash
 # both routers
-containerlab exec -t routed.clab.yml --label clab-node-kind=nokia_srlinux --cmd "sr_cli show version"
+containerlab exec -t routed.clab.yml --label clab-node-kind=cisco_xrd --cmd '/pkg/bin/xr_cli "show version"'
 
 # one host
 containerlab exec -t routed.clab.yml --label clab-node-name=h1 --cmd "ip -4 addr show eth1"
@@ -106,7 +107,7 @@ SSH can hop through the lab host to a node in one command. The node's name is lo
 still work:
 
 ```bash
-ssh -J you@labhost admin@clab-routed-srl1
+ssh -J you@labhost clab@clab-routed-xrd1
 ```
 
 Replace `you@labhost` with your login on the lab host. You are asked for the lab host password, then the router
@@ -118,7 +119,7 @@ Host clab-*
     ProxyJump you@labhost
 ```
 
-Then `ssh admin@clab-routed-srl1` works directly from the laptop.
+Then `ssh clab@clab-routed-xrd1` works directly from the laptop.
 
 ### A route to the management network (same LAN)
 
@@ -135,10 +136,13 @@ sudo ip route add 172.20.20.0/24 via 192.168.0.201
 route -p add 172.20.20.0 mask 255.255.255.0 192.168.0.201
 ```
 
-Then connect to the node's management address, for example `ssh admin@172.20.20.11`, or open a SecureCRT session to
+Then connect to the node's management address, for example `ssh clab@172.20.20.11`, or open a SecureCRT session to
 it. Use addresses rather than names, since the names only exist on the lab host. The route only works when the laptop
 and the lab host are on the same network; across the internet, use the jump host. After a redeploy, a node has a new
 host key, so remove the old one with `ssh-keygen -R 172.20.20.11` if SSH warns about it.
+
+The router can answer your laptop because of the default route in its startup config, which points out of the
+management interface (see [Part 3](../03-topology-file/)). An XRd node without such a route only answers the lab host.
 
 ### A published port
 
@@ -146,13 +150,13 @@ A node can publish one of its ports on the lab host, like `docker run -p`. Add `
 file:
 
 ```yaml
-    srl1:
-      kind: nokia_srlinux
+    xrd1:
+      kind: cisco_xrd
       ports:
         - 2201:22
 ```
 
-After a redeploy, `ssh -p 2201 admin@labhost` reaches srl1's SSH server. This suits one service on one node; for many
+After a redeploy, `ssh -p 2201 clab@labhost` reaches xrd1's SSH server. This suits one service on one node; for many
 nodes, the jump host is simpler.
 
 ## Use the generated inventories
@@ -165,29 +169,34 @@ Containerlab writes inventory files into the lab folder (`clab-routed/`) on ever
 | `nornir-simple-inventory.yml` | Nornir's SimpleInventory |
 | `topology-data.json` | your own scripts: every node's name, kind, image and management address, and every link |
 
-Because they are rebuilt on each deploy, they always match the running lab. Here is `show_version.py` from
-`labs/04-connect`, which reads `topology-data.json` and logs in to every SR Linux router:
+Because they are rebuilt on each deploy, they always match the running lab. Here is the main part of
+`show_version.py` from `labs/04-connect`, which reads `topology-data.json` and logs in to every XRd router:
 
 ```python
 import json
 import sys
 
-from netmiko import ConnectHandler
+from netmiko import ConnectHandler  # pip install netmiko
 
 data_file = sys.argv[1] if len(sys.argv) > 1 else "../03-topology/clab-routed/topology-data.json"
 with open(data_file) as f:
     nodes = json.load(f)["nodes"]
 
 for name, node in sorted(nodes.items()):
-    if node["kind"] != "nokia_srlinux":
+    if node["kind"] != "cisco_xrd":
         continue
-    conn = ConnectHandler(device_type="nokia_srl", host=node["mgmt-ipv4-address"],
-                          username="admin", password="NokiaSrl1!")
+    conn = ConnectHandler(
+        device_type="cisco_xr",
+        host=node["mgmt-ipv4-address"],
+        username="clab",
+        password="clab@123",
+    )
     output = conn.send_command("show version")
     conn.disconnect()
-    version = next((line.split(":", 1)[1].strip() for line in output.splitlines()
-                    if line.startswith("Software Version")), "unknown")
-    print(f"{name:6} {node['mgmt-ipv4-address']:15} SR Linux {version}")
+    marker = "Cisco IOS XR Software, Version "
+    version = next((line[len(marker):].strip() for line in output.splitlines()
+                    if line.startswith(marker)), "unknown")
+    print(f"{name:6} {node['mgmt-ipv4-address']:15} IOS XR {version}")
 ```
 
 Ubuntu does not let `pip` install into the system Python, so install Netmiko in a virtual environment once:
@@ -206,8 +215,8 @@ cd ../04-connect
 ```
 
 ```
-srl1   172.20.20.11    SR Linux v26.7.2
-srl2   172.20.20.12    SR Linux v26.7.2
+xrd1   172.20.20.11    IOS XR 7.11.2 LNT
+xrd2   172.20.20.12    IOS XR 7.11.2 LNT
 ```
 
 ## Verify
@@ -216,13 +225,13 @@ Run each check on the lab host.
 
 | Step | Command | You should see |
 |---|---|---|
-| 1. Names | `grep clab-routed /etc/hosts` | a line for each of `clab-routed-srl1`, `-srl2`, `-h1` and `-h2` with its 172.20.20.x address (plus a second line each with an IPv6 address on some hosts) |
-| 2. SSH by name | `ssh clab-routed-srl1`, then `show version`, then `quit` | the SR Linux prompt with no password (or a password prompt if you have no SSH key), then `Software Version` |
+| 1. Names | `grep clab-routed /etc/hosts` | a line for each of `clab-routed-xrd1`, `-xrd2`, `-h1` and `-h2` with its 172.20.20.x address (plus a second line each with an IPv6 address on some hosts) |
+| 2. SSH by name | `ssh clab-routed-xrd1`, then `show version`, then `exit` | a password prompt, the IOS XR prompt, then `Cisco IOS XR Software, Version 7.11.2` |
 | 3. docker exec | `docker exec clab-routed-h1 hostname` | `h1` |
-| 4. containerlab exec | `containerlab exec -t routed.clab.yml --label clab-node-kind=nokia_srlinux --cmd "sr_cli show version"` | a `Software Version` line for each of srl1 and srl2 |
+| 4. containerlab exec | `containerlab exec -t routed.clab.yml --label clab-node-kind=cisco_xrd --cmd '/pkg/bin/xr_cli "show version"'` | a `Cisco IOS XR Software` line for each of xrd1 and xrd2 |
 | 5. Inventories | `ls clab-routed/` | `ansible-inventory.yml`, `nornir-simple-inventory.yml` and `topology-data.json` among the files |
-| 6. Python | `~/clab-venv/bin/python ../04-connect/show_version.py clab-routed/topology-data.json` | one line each for srl1 and srl2 with the SR Linux version |
-| 7. From your laptop | `ssh -J you@labhost admin@clab-routed-srl1` | the SR Linux prompt after both passwords |
+| 6. Python | `~/clab-venv/bin/python ../04-connect/show_version.py clab-routed/topology-data.json` | one line each for xrd1 and xrd2 with the IOS XR version |
+| 7. From your laptop | `ssh -J you@labhost clab@clab-routed-xrd1` | the IOS XR prompt after both passwords |
 
 Or run steps 1 to 6 at once from `labs/04-connect`. `PYTHON` tells the script which Python has Netmiko:
 
@@ -235,9 +244,10 @@ PYTHON=~/clab-venv/bin/python ./verify.sh
 Checking connection methods on lab routed
   PASS  /etc/hosts has entries for all 4 nodes
   PASS  docker exec opens a shell on h1
-  PASS  docker exec runs the SR Linux CLI on srl1
+  PASS  docker exec runs the IOS XR CLI on xrd1
   PASS  containerlab exec ran on both routers
-  PASS  ssh clab-routed-srl1 logs in with your SSH key
+  PASS  ssh clab-routed-xrd1 logs in as clab with the lab password
+  PASS  ssh clab-routed-xrd2 logs in as clab with the lab password
   PASS  lab folder has ansible-inventory.yml
   PASS  lab folder has nornir-simple-inventory.yml
   PASS  lab folder has topology-data.json
@@ -246,25 +256,27 @@ Checking connection methods on lab routed
 All checks passed.
 ```
 
-`SKIP` means a check could not run on your setup, such as having no SSH key or no Netmiko; it is not a failure. Step 7
-runs on your laptop, so the script cannot check it.
+The script types the lab password for you in the SSH checks. `SKIP` means a check could not run on your setup, such
+as having no Netmiko; it is not a failure. Step 7 runs on your laptop, so the script cannot check it.
 
 ## Remove the lab
 
 ```bash
 cd ~/dynanet-dev/clab-workshop/labs/03-topology
-containerlab destroy -t routed.clab.yml
+containerlab destroy -t routed.clab.yml --cleanup
 ```
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| `ssh clab-routed-srl1` asks for a password | You had no SSH key when the lab was deployed. Create one with `ssh-keygen -t ed25519` and redeploy with `--reconfigure`, or type the password |
-| `Could not resolve hostname clab-routed-srl1` on your laptop | Names only exist on the lab host. Use the jump host, or the management address with a route |
+| `ssh clab-routed-xrd1` answers `Connection refused` or `Connection timed out` | The router is still starting. Wait a minute and try again |
+| SSH answers `Connection closed`, or Netmiko reports `Error reading SSH protocol banner` | IOS XR limits how fast new SSH sessions may start on one router. Wait two seconds and try again |
+| SSH from the laptop reaches the lab host but the router never answers | The router has no route back to your laptop. Check the default route with `show route static` on the router |
+| `Could not resolve hostname clab-routed-xrd1` on your laptop | Names only exist on the lab host. Use the jump host, or the management address with a route |
 | SSH from the laptop to 172.20.20.x times out | Check the route (`ip route` or `route print`), that the laptop is on the lab host's LAN, and that the lab is running |
 | `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED` | The node was redeployed and has a new key. Run `ssh-keygen -R <address>` and connect again |
-| `docker exec ... xr_cli.sh` prints a terminal error | Add `-it`; the XRd CLI needs an interactive terminal |
+| `docker exec ... xr_cli.sh` prints a terminal error | Add `-it`; the IOS XR login needs an interactive terminal |
 | `ModuleNotFoundError: No module named 'netmiko'` | Run the script with the virtual environment's Python: `~/clab-venv/bin/python` |
 
 ## Next

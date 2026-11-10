@@ -4,7 +4,7 @@
 lab=routed; fails=0
 pass() { printf '  PASS  %s\n' "$1"; }
 fail() { printf '  FAIL  %s\n' "$1"; fails=$((fails + 1)); }
-cli()  { docker exec "clab-$lab-$1" sr_cli "$2" 2>/dev/null; }
+cli()  { docker exec "clab-$lab-$1" /pkg/bin/xr_cli "$2" 2>/dev/null; }
 
 echo "Checking lab $lab"
 # Management addresses as Containerlab reports them (works whatever network mode a node's container uses).
@@ -16,7 +16,7 @@ try:
             print(n["name"], n.get("ipv4_address", "").split("/")[0])
 except ValueError:
     pass')
-for n in srl1:172.20.20.11 srl2:172.20.20.12 h1:172.20.20.21 h2:172.20.20.22; do
+for n in xrd1:172.20.20.11 xrd2:172.20.20.12 h1:172.20.20.21 h2:172.20.20.22; do
     name=${n%%:*}; ip=${n#*:}
     if [[ $(docker inspect -f '{{.State.Running}}' "clab-$lab-$name" 2>/dev/null) != true ]]; then
         fail "$name is not running"; continue
@@ -27,24 +27,24 @@ for n in srl1:172.20.20.11 srl2:172.20.20.12 h1:172.20.20.21 h2:172.20.20.22; do
 done
 (( fails == 0 )) || { echo; echo "Deploy the lab first: containerlab deploy -t routed.clab.yml"; exit 1; }
 
-# SR Linux keeps starting for a short while after the deploy finishes; wait for both CLIs (up to 90 s).
-for n in srl1 srl2; do
-    for _ in $(seq 1 18); do
-        cli "$n" "show version" | grep -q 'Software Version' && break
+# XRd keeps starting after the deploy finishes, then loads its startup config; wait for both (up to 3 minutes).
+for n in xrd1 xrd2; do
+    for _ in $(seq 1 36); do
+        cli "$n" "show running-config hostname" | grep -q "^hostname $n" && break
         echo "  ....  waiting for $n to finish starting"; sleep 5
     done
 done
 
-for n in srl1 srl2; do
-    for i in ethernet-1/1 ethernet-1/2; do
-        cli "$n" "show interface $i" | grep -q "$i is up" && pass "$n $i is up" || fail "$n $i is not up"
+for n in xrd1 xrd2; do
+    for i in GigabitEthernet0/0/0/0 GigabitEthernet0/0/0/1; do
+        cli "$n" "show interfaces $i" | grep -q 'is up, line protocol is up' && pass "$n $i is up" || fail "$n $i is not up"
     done
 done
 
-cli srl1 "info from state network-instance default static-routes route 192.168.2.0/24" | grep -q 'installed true' \
-    && pass "srl1 has the static route to 192.168.2.0/24 installed" || fail "srl1 static route to 192.168.2.0/24 is not installed"
-cli srl2 "info from state network-instance default static-routes route 192.168.1.0/24" | grep -q 'installed true' \
-    && pass "srl2 has the static route to 192.168.1.0/24 installed" || fail "srl2 static route to 192.168.1.0/24 is not installed"
+cli xrd1 "show route 192.168.2.0/24" | grep -q 'Known via "static"' \
+    && pass "xrd1 has the static route to 192.168.2.0/24 installed" || fail "xrd1 static route to 192.168.2.0/24 is not installed"
+cli xrd2 "show route 192.168.1.0/24" | grep -q 'Known via "static"' \
+    && pass "xrd2 has the static route to 192.168.1.0/24 installed" || fail "xrd2 static route to 192.168.1.0/24 is not installed"
 
 # Routers need a few seconds after boot before they forward; retry for up to 60 s.
 ok=no
@@ -56,7 +56,7 @@ done
 
 path=$(docker exec clab-$lab-h1 traceroute -n -w 2 -m 5 192.168.2.10 2>/dev/null | awk 'NR>1 {print $2}' | paste -sd' ')
 [[ $path == "192.168.1.1 10.0.12.2 192.168.2.10" ]] \
-    && pass "h1 to h2 path is srl1 -> srl2 -> h2 ($path)" || fail "unexpected path from h1 to h2: $path"
+    && pass "h1 to h2 path is xrd1 -> xrd2 -> h2 ($path)" || fail "unexpected path from h1 to h2: $path"
 
 echo
 if (( fails == 0 )); then echo "All checks passed."; else echo "$fails check(s) failed."; exit 1; fi

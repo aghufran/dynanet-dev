@@ -6,6 +6,7 @@ pass() { printf '  PASS  %s\n' "$1"; }
 fail() { printf '  FAIL  %s\n' "$1"; fails=$((fails + 1)); }
 on()   { local host=$1; shift; docker exec "$host" "$@" 2>/dev/null; }          # run on a lab host
 node() { local host=$1 n=$2; shift 2; docker exec "$host" docker exec "$n" "$@" 2>/dev/null; }  # run in a lab node
+cli()  { node "lab-host-$1" "clab-site$1-xrd$1" /pkg/bin/xr_cli "$2"; }             # IOS XR command on xrd1 or xrd2
 
 echo "Checking the two-host lab"
 for i in 1 2; do
@@ -17,36 +18,36 @@ done
 on lab-host-1 ping -c 2 -W 2 192.168.100.12 | grep -q ' 0% packet loss' \
     && pass "underlay: lab-host-1 reaches lab-host-2 (192.168.100.11 -> .12)" || fail "underlay: lab-host-1 cannot reach 192.168.100.12"
 
-for pair in 1:srl1 1:h1 2:srl2 2:h2; do
+for pair in 1:xrd1 1:h1 2:xrd2 2:h2; do
     i=${pair%%:*}; n=${pair#*:}; site=site$i
     [[ $(on "lab-host-$i" docker inspect -f '{{.State.Running}}' "clab-$site-$n") == true ]] \
         && pass "$n is running on lab-host-$i" || fail "$n is not running on lab-host-$i"
 done
 
-# SR Linux keeps starting for a short while after the deploy; wait for both CLIs (up to 90 s).
-for pair in 1:srl1 2:srl2; do
+# XRd keeps starting after the deploy, then loads its startup config; wait for both (up to 3 minutes).
+for pair in 1:xrd1 2:xrd2; do
     i=${pair%%:*}; n=${pair#*:}
-    for _ in $(seq 1 18); do
-        node "lab-host-$i" "clab-site$i-$n" sr_cli "show version" | grep -q 'Software Version' && break
+    for _ in $(seq 1 36); do
+        cli "$i" "show running-config hostname" | grep -q "^hostname $n" && break
         echo "  ....  waiting for $n to finish starting"; sleep 5
     done
 done
 
-for pair in 1:srl1 2:srl2; do
+for pair in 1:xrd1 2:xrd2; do
     i=${pair%%:*}; n=${pair#*:}
-    for ifc in ethernet-1/1 ethernet-1/2; do
-        node "lab-host-$i" "clab-site$i-$n" sr_cli "show interface $ifc" | grep -q "$ifc is up" \
+    for ifc in GigabitEthernet0/0/0/0 GigabitEthernet0/0/0/1; do
+        cli "$i" "show interfaces $ifc" | grep -q 'is up, line protocol is up' \
             && pass "$n $ifc is up" || fail "$n $ifc is not up"
     done
 done
 
 ok=no
-for _ in $(seq 1 6); do
-    node lab-host-1 clab-site1-srl1 sr_cli "ping 10.0.12.2 network-instance default -c 3" | grep -q ' 0% packet loss' && { ok=yes; break; }
+for _ in $(seq 1 12); do
+    cli 1 "ping 10.0.12.2 count 3" | grep -q 'Success rate is 100 percent' && { ok=yes; break; }
     sleep 5
 done
-[[ $ok == yes ]] && pass "srl1 pings srl2 across the VXLAN tunnel (10.0.12.1 -> 10.0.12.2)" \
-                 || fail "srl1 cannot reach srl2 across the tunnel: check both sides use the same VNI and port, and the remote IPs"
+[[ $ok == yes ]] && pass "xrd1 pings xrd2 across the VXLAN tunnel (10.0.12.1 -> 10.0.12.2)" \
+                 || fail "xrd1 cannot reach xrd2 across the tunnel: check both sides use the same VNI and port, and the remote IPs"
 tries=12; [[ $ok == yes ]] || tries=1   # no point retrying the end-to-end checks if the tunnel is down
 
 ok=no
@@ -59,7 +60,7 @@ h2_ok=$ok
 
 path=$(node lab-host-1 clab-site1-h1 traceroute -n -w 2 -m 5 192.168.2.10 | awk 'NR>1 {print $2}' | paste -sd' ')
 [[ $path == "192.168.1.1 10.0.12.2 192.168.2.10" ]] \
-    && pass "h1 to h2 path is srl1 -> srl2 -> h2 ($path)" || fail "unexpected path from h1 to h2: $path"
+    && pass "h1 to h2 path is xrd1 -> xrd2 -> h2 ($path)" || fail "unexpected path from h1 to h2: $path"
 
 # Capture the underlay while pinging: the packets between the hosts must be VXLAN, VNI 100.
 docker exec -d lab-host-1 sh -c 'timeout 8 tcpdump -ni eth0 -c 4 udp port 4789 > /tmp/verify-vxlan.txt 2>&1'

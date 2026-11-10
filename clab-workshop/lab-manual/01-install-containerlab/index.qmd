@@ -26,7 +26,8 @@ This is the first part of the Containerlab workshop. All the instructions are fo
 | Host | An Ubuntu 22.04, 24.04 or 26.04 LTS machine or VM. Use x86_64: many network OS images, Cisco XRd among them, are not built for ARM64 |
 | Access | A user with `sudo` rights |
 | CPU | More than 1 vCPU. Most network OS containers need at least one core each while booting |
-| Memory | Depends on the lab. A Linux node needs a few MB; a Cisco XRd router about **2.5 GB**; Nokia SR Linux and Arista cEOS about 1–2 GB each |
+| Memory | Depends on the lab. A Linux node needs a few MB; a Cisco XRd router about **1.6 GB** in the labs of this workshop, and up to 2.5 GB when it runs routing protocols |
+| Router image | Parts 2 to 5 use Cisco XRd, which you get from Cisco with your own account ([Part 2](../02-load-images/) shows how). Part 1 needs no vendor image |
 | IPv6 | Must not be disabled in the kernel |
 | Internet | To download packages and container images |
 
@@ -236,7 +237,7 @@ Everyone in a workshop should run the same Containerlab version, so install the 
 
 ## Next
 
-Part 2 covers loading network operating system images, such as Cisco XRd, Nokia SR Linux and Arista cEOS, into Docker
+Part 2 covers loading network operating system images, such as Cisco XRd and Arista cEOS, into Docker
 so that Containerlab can use them.
 
 **Sources:** [Containerlab installation guide](https://containerlab.dev/install/) ·

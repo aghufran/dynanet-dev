@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 # Build and start the two-host lab on one Ubuntu machine.
 #   - two "lab hosts" (containers with their own Docker + Containerlab) on an underlay network
-#   - site1 (h1, srl1) on lab-host-1, site2 (srl2, h2) on lab-host-2
-#   - srl1 and srl2 joined by a VXLAN tunnel (VNI 100) across the underlay
-# Needs only Docker on this machine. Run:  ./up.sh      Remove with:  ./down.sh
+#   - site1 (h1, xrd1) on lab-host-1, site2 (xrd2, h2) on lab-host-2
+#   - xrd1 and xrd2 joined by a VXLAN tunnel (VNI 100) across the underlay
+# Needs Docker and the Cisco XRd image on this machine (Part 2). Run:  ./up.sh      Remove with:  ./down.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 NET=clab-underlay SUBNET=192.168.100.0/24 GW=192.168.100.1
-IMAGES=(ghcr.io/nokia/srlinux:26.7.2 alpine:3)
+XRD=ios-xr/xrd-control-plane:7.11.2
+IMAGES=("$XRD" alpine:3)
+
+# XRd cannot be downloaded from a public registry, so it must already be loaded here (Part 2).
+docker image inspect "$XRD" >/dev/null 2>&1 || {
+    echo "The image $XRD is not loaded on this machine. Load it first (Part 2), then run ./up.sh again."; exit 1; }
 
 echo "1/5 Building the lab-host image (Ubuntu + Docker + Containerlab)"
 docker build -q -t clab-host:24.04 host/ >/tmp/clab-host-build.log 2>&1 || { cat /tmp/clab-host-build.log; exit 1; }

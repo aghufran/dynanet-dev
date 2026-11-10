@@ -1,0 +1,23 @@
+# Part 2 (Loading network OS images): two Cisco XRd routers joined by one link.
+# XRd is not on a public registry: download it from Cisco and load it first (Part 2 shows how).
+#
+#   docker image ls ios-xr/xrd-control-plane
+#   containerlab deploy -t xrd-pair.clab.yml
+#   ssh clab@clab-xrd-pair-xrd1           (password clab@123)
+#   containerlab destroy -t xrd-pair.clab.yml --cleanup
+name: xrd-pair
+
+topology:
+  nodes:
+    xrd1:
+      kind: cisco_xrd
+      image: ios-xr/xrd-control-plane:7.11.2
+      startup-config: xrd1.cfg
+    xrd2:
+      kind: cisco_xrd
+      image: ios-xr/xrd-control-plane:7.11.2
+      startup-config: xrd2.cfg
+
+  links:
+    # Gi0-0-0-0 here is GigabitEthernet0/0/0/0 inside the router.
+    - endpoints: ["xrd1:Gi0-0-0-0", "xrd2:Gi0-0-0-0"]

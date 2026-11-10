@@ -28,6 +28,9 @@ A hands-on workshop on using [Containerlab](https://containerlab.dev) for networ
 | 4 | Connecting to the nodes in a lab | Available |
 | 5 | Running a lab across several hosts (VXLAN) | Available |
 
+**What you need:** an Ubuntu host with 4 vCPUs and 16 GB of RAM. The routers in Parts 2 to 5 run Cisco IOS XR, as the
+Cisco XRd container image. You get that image from Cisco with your own account; Part 2 shows how to load it.
+
 To see any lab in the workshop, or one of your own, as a diagram, paste its topology file into the
 [topology viewer](https://graphs.dynanet.dev/topology).
 

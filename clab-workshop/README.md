@@ -41,8 +41,10 @@ cloud/       material for running labs across cloud VMs (AWS)
 
 ## Requirements
 
-An Ubuntu 22.04, 24.04 or 26.04 LTS host (desktop, server or VM) with 4 vCPUs and 16 GB of RAM covers every lab. Some parts use network OS images
-that need a vendor account to download (for example Cisco XRd); the lab manual for each part says which.
+An Ubuntu 22.04, 24.04 or 26.04 LTS host (desktop, server or VM) with 4 vCPUs and 16 GB of RAM covers every lab.
+
+The routers in Parts 2 to 5 run Cisco XRd (IOS XR), release 7.11.2 in the lab files. The XRd image is not in this
+repository: you get it from Cisco with your own account, and Part 2 shows how to load it. Part 1 needs no vendor image.
 
 ## Licence
 

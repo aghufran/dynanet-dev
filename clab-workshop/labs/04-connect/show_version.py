@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Log in to every SR Linux router in a running lab and print its software version.
+"""Log in to every Cisco XRd router in a running lab and print its software version.
 
 Reads the node list from the topology-data.json file Containerlab writes into the
 lab folder, so it needs no hand-written inventory.
@@ -16,16 +16,17 @@ with open(data_file) as f:
     nodes = json.load(f)["nodes"]
 
 for name, node in sorted(nodes.items()):
-    if node["kind"] != "nokia_srlinux":
+    if node["kind"] != "cisco_xrd":
         continue
     conn = ConnectHandler(
-        device_type="nokia_srl",
+        device_type="cisco_xr",
         host=node["mgmt-ipv4-address"],
-        username="admin",
-        password="NokiaSrl1!",
+        username="clab",
+        password="clab@123",
     )
     output = conn.send_command("show version")
     conn.disconnect()
-    version = next((line.split(":", 1)[1].strip() for line in output.splitlines()
-                    if line.startswith("Software Version")), "unknown")
-    print(f"{name:6} {node['mgmt-ipv4-address']:15} SR Linux {version}")
+    marker = "Cisco IOS XR Software, Version "
+    version = next((line[len(marker):].strip() for line in output.splitlines()
+                    if line.startswith(marker)), "unknown")
+    print(f"{name:6} {node['mgmt-ipv4-address']:15} IOS XR {version}")

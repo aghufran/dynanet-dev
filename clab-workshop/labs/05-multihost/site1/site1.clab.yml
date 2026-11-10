@@ -1,26 +1,21 @@
 # Part 5 (multi-host labs): the half of the routed lab that runs on lab-host-1.
 #
 #   lab-host-1 (192.168.100.11)                lab-host-2 (192.168.100.12)
-#   h1 ---- srl1 ==== VXLAN VNI 100 ==== srl2 ---- h2
-#
-# srl1's ethernet-1/2 is joined to srl2's ethernet-1/2 by a VXLAN tunnel over the
-# underlay network, so the two routers behave as if one cable connected them.
-# VXLAN adds 50 bytes, so the routers' configs limit that interface to an IP MTU of 1450.
-# The link itself is set to MTU 1500 because SR Linux ports refuse anything smaller.
+#   h1 ---- xrd1 ==== VXLAN VNI 100 ==== xrd2 ---- h2
 name: site1
 
 topology:
   kinds:
-    nokia_srlinux:
-      image: ghcr.io/nokia/srlinux:26.7.2
+    cisco_xrd:
+      image: ios-xr/xrd-control-plane:7.11.2
     linux:
       image: alpine:3
 
   nodes:
-    srl1:
-      kind: nokia_srlinux
+    xrd1:
+      kind: cisco_xrd
       mgmt-ipv4: 172.20.20.11
-      startup-config: configs/srl1.cli
+      startup-config: configs/xrd1.cfg
     h1:
       kind: linux
       mgmt-ipv4: 172.20.20.21
@@ -30,13 +25,12 @@ topology:
         - ip route add 192.168.2.0/24 via 192.168.1.1
 
   links:
-    - endpoints: ["h1:eth1", "srl1:ethernet-1/1"]
+    - endpoints: ["h1:eth1", "xrd1:Gi0-0-0-0"]
     # The cross-host link: a VXLAN tunnel to lab-host-2.
     - type: vxlan
       endpoint:
-        node: srl1
-        interface: ethernet-1/2
+        node: xrd1
+        interface: Gi0-0-0-1
       remote: 192.168.100.12
       vni: 100
       dst-port: 4789
-      mtu: 1500      # SR Linux ports need at least 1500; the router config sets IP MTU 1450

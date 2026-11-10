@@ -1,47 +1,52 @@
 #!/usr/bin/env bash
-# Verify the srl-pair lab (Part 2). Run after: containerlab deploy -t srl-pair.clab.yml
+# Verify the xrd-pair lab (Part 2). Run after: containerlab deploy -t xrd-pair.clab.yml
 # Prints PASS or FAIL for each check and exits non-zero if any check fails.
-lab=srl-pair; fails=0
+lab=xrd-pair; fails=0
 pass() { printf '  PASS  %s\n' "$1"; }
 fail() { printf '  FAIL  %s\n' "$1"; fails=$((fails + 1)); }
-cli()  { docker exec "clab-$lab-$1" sr_cli "$2" 2>/dev/null; }
+cli()  { docker exec "clab-$lab-$1" /pkg/bin/xr_cli "$2" 2>/dev/null; }
 
 echo "Checking lab $lab"
-for n in srl1 srl2; do
+for n in xrd1 xrd2; do
     if [[ $(docker inspect -f '{{.State.Running}}' "clab-$lab-$n" 2>/dev/null) == true ]]; then
         pass "$n is running"
     else
         fail "$n is not running (deploy the lab first)"
     fi
 done
-(( fails == 0 )) || { echo; echo "Deploy the lab first: containerlab deploy -t srl-pair.clab.yml"; exit 1; }
+(( fails == 0 )) || { echo; echo "Deploy the lab first: containerlab deploy -t xrd-pair.clab.yml"; exit 1; }
 
-# SR Linux keeps starting for a short while after the deploy finishes; wait for both CLIs (up to 90 s).
-for n in srl1 srl2; do
-    for _ in $(seq 1 18); do
-        cli "$n" "show version" | grep -q 'Software Version' && break
+# XRd keeps starting after the deploy finishes, then loads its startup config; wait for both (up to 3 minutes).
+for n in xrd1 xrd2; do
+    for _ in $(seq 1 36); do
+        cli "$n" "show running-config hostname" | grep -q "^hostname $n" && break
         echo "  ....  waiting for $n to finish starting"; sleep 5
     done
 done
 
-ver=$(cli srl1 "show version" | awk -F': ' '/Software Version/ {print $2}')
-[[ -n $ver ]] && pass "srl1 answers the CLI: SR Linux $ver" || fail "srl1 does not answer the CLI yet (wait a minute and retry)"
+ver=$(cli xrd1 "show version" | sed -n 's/^Cisco IOS XR Software, Version //p')
+[[ -n $ver ]] && pass "xrd1 answers the CLI: IOS XR $ver" || fail "xrd1 does not answer the CLI yet (wait a minute and retry)"
 
-for n in srl1 srl2; do
-    cli "$n" "show interface ethernet-1/1" | grep -q 'ethernet-1/1 is up' \
-        && pass "$n ethernet-1/1 is up" || fail "$n ethernet-1/1 is not up"
+for n in xrd1 xrd2; do
+    cli "$n" "show interfaces GigabitEthernet0/0/0/0" | grep -q 'is up, line protocol is up' \
+        && pass "$n GigabitEthernet0/0/0/0 is up" || fail "$n GigabitEthernet0/0/0/0 is not up"
 done
 
-cli srl1 "show system lldp neighbor" | grep -q 'srl2' \
-    && pass "srl1 sees srl2 as an LLDP neighbour" || fail "srl1 does not see srl2 over LLDP (wait 30 s and retry)"
-
-# The routers need a few seconds after boot before they forward; retry for up to 60 s.
+# LLDP neighbours appear within about 30 s; retry for up to 60 s.
 ok=no
 for _ in $(seq 1 12); do
-    if cli srl1 "ping 10.0.12.2 network-instance default -c 3" | grep -q ' 0% packet loss'; then ok=yes; break; fi
+    cli xrd1 "show lldp neighbors" | grep -q '^xrd2 ' && { ok=yes; break; }
     sleep 5
 done
-[[ $ok == yes ]] && pass "srl1 pings srl2 (10.0.12.1 -> 10.0.12.2), 0% loss" || fail "srl1 cannot ping srl2 at 10.0.12.2"
+[[ $ok == yes ]] && pass "xrd1 sees xrd2 as an LLDP neighbour" || fail "xrd1 does not see xrd2 over LLDP"
+
+# The first ping can lose a packet while the routers learn each other's MAC address; retry for up to 60 s.
+ok=no
+for _ in $(seq 1 12); do
+    cli xrd1 "ping 10.0.12.2 count 3" | grep -q 'Success rate is 100 percent' && { ok=yes; break; }
+    sleep 5
+done
+[[ $ok == yes ]] && pass "xrd1 pings xrd2 (10.0.12.1 -> 10.0.12.2), 100% success" || fail "xrd1 cannot ping xrd2 at 10.0.12.2"
 
 echo
 if (( fails == 0 )); then echo "All checks passed."; else echo "$fails check(s) failed."; exit 1; fi
