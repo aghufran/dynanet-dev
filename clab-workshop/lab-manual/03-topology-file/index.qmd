@@ -326,7 +326,7 @@ containerlab destroy -t routed.clab.yml --cleanup
 | Symptom | Fix |
 |---|---|
 | Deploy stops with a YAML parsing error | An indentation or quoting mistake. YAML uses spaces, never tabs; align each level by two spaces |
-| A node fails with an interface name error | The interface name does not match the node's kind, for example `eth1` on an XRd node instead of `Gi0-0-0-0` |
+| The deploy stops with an interface name error | The interface name does not match the node's kind, for example `eth1` on an XRd node instead of `Gi0-0-0-0` |
 | Deploy fails because a management address is already taken | Another container already has that `mgmt-ipv4`. Pick a free address or remove the other lab |
 | Deploy fails, or nodes are unreachable, because 172.20.20.0/24 is already used on your network | Add an `mgmt` block with a free range (see Management network above) and change every `mgmt-ipv4` to match |
 | A startup config change has no effect | Deploy with `--reconfigure` |
