@@ -217,16 +217,27 @@ Open a shell in n1:
 docker exec -it clab-first-lab-n1 sh
 ```
 
-The prompt changes to `/ #`, which means you are now inside n1. Run steps 2 and 4 there:
+The prompt changes to `/ #`, which means you are now inside n1. The two commands below do the same as steps 2 and 4
+in the table above, but you type them here, inside n1, instead of through `docker exec` from the host. Do not use
+the `docker exec` commands from the table now:
+
+| Step | Command (inside n1) | You should see |
+|---|---|---|
+| 2. Address on n1 | `ip -4 addr show eth1` | `inet 10.0.12.1/30` |
+| 4. Reachability | `ping -c 3 10.0.12.2` | `3 packets transmitted, 3 packets received, 0% packet loss` |
+
+Type `exit` to go back to the host. Now do the same checks from inside n2. Open a shell in it:
 
 ```bash
-ip -4 addr show eth1
-ping -c 3 10.0.12.2
+docker exec -it clab-first-lab-n2 sh
 ```
 
-You should see the same results as before: `inet 10.0.12.1/30`, and `3 packets transmitted, 3 packets received,
-0% packet loss`. Type `exit` to go back to the host. To check n2 the same way, open a shell with
-`docker exec -it clab-first-lab-n2 sh`, expect `inet 10.0.12.2/30`, and ping `10.0.12.1`.
+| Step | Command (inside n2) | You should see |
+|---|---|---|
+| 3. Address on n2 | `ip -4 addr show eth1` | `inet 10.0.12.2/30` |
+| 4. Reachability | `ping -c 3 10.0.12.1` | `3 packets transmitted, 3 packets received, 0% packet loss` |
+
+Type `exit` to go back to the host.
 
 ### Remove the lab
 
@@ -262,7 +273,7 @@ Everyone in a workshop should run the same Containerlab version, so install the 
 
 ## Next
 
-Part 2 covers loading network operating system images, such as Cisco XRd and Arista cEOS, into Docker
+[Part 2](../02-load-images/) covers loading network operating system images, such as Cisco XRd and Arista cEOS, into Docker
 so that Containerlab can use them.
 
 **Sources:** [Containerlab installation guide](https://containerlab.dev/install/) ·
