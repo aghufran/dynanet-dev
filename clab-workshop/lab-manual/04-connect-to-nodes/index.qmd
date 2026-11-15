@@ -285,7 +285,7 @@ containerlab destroy -t routed.clab.yml --cleanup
 
 ## Next
 
-Part 5 spreads a lab across several hosts, joined by VXLAN tunnels: first on one machine, then on separate machines or cloud VMs.
+[Part 5](../05-multi-host/) spreads a lab across several hosts, joined by VXLAN tunnels: first on one machine, then on separate machines or cloud VMs.
 
 **Sources:** [containerlab exec](https://containerlab.dev/cmd/exec/) ·
 [Network wiring and external access](https://containerlab.dev/manual/network/) ·

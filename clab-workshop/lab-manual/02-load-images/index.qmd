@@ -393,7 +393,7 @@ any case: GitHub rejects files larger than 100 MB.
 
 ## Next
 
-Part 3 covers writing a topology file: nodes, kinds, links, startup configurations and management addresses.
+[Part 3](../03-topology-file/) covers writing a topology file: nodes, kinds, links, startup configurations and management addresses.
 
 **Sources:** [Containerlab kinds](https://containerlab.dev/manual/kinds/) ·
 [Cisco XRd](https://containerlab.dev/manual/kinds/xrd/) · [Arista cEOS](https://containerlab.dev/manual/kinds/ceos/) ·

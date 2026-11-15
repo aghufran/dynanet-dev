@@ -366,7 +366,7 @@ containerlab destroy -t routed.clab.yml --cleanup
 
 ## Next
 
-Part 4 covers connecting to the nodes in a lab: SSH by name, `docker exec`, reaching nodes from another machine, and
+[Part 4](../04-connect-to-nodes/) covers connecting to the nodes in a lab: SSH by name, `docker exec`, reaching nodes from another machine, and
 the generated inventories for automation tools.
 
 **Sources:** [Topology definition](https://containerlab.dev/manual/topo-def-file/) ·
