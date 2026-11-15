@@ -306,6 +306,20 @@ You get the IOS XR prompt, `RP/0/RP0/CPU0:xrd1#`. Run each check:
 | 4. Neighbour | `show lldp neighbors` | a row with Device ID `xrd2` and Local Intf `GigabitEthernet0/0/0/0` |
 | 5. Reachability | `ping 10.0.12.2 count 3` | `!!!` and `Success rate is 100 percent (3/3)` |
 
+Now check the other side from inside xrd2. Log in with `ssh clab@clab-xrd-pair-xrd2` (password `clab@123`) and run
+the same steps with the mirrored values:
+
+| Step | Command (on xrd2) | You should see |
+|---|---|---|
+| 1. Software | `show version` | `Cisco IOS XR Software, Version 7.11.2` |
+| 2. Link up | `show interfaces GigabitEthernet0/0/0/0` | `GigabitEthernet0/0/0/0 is up, line protocol is up` |
+| 3. Address | `show ipv4 interface brief` | a row for `GigabitEthernet0/0/0/0` with `10.0.12.2`, `Up` and `Up` |
+| 4. Neighbour | `show lldp neighbors` | a row with Device ID `xrd1` |
+| 5. Reachability | `ping 10.0.12.1 count 3` | `Success rate is 100 percent (3/3)` |
+
+Both routers must see each other: a link that works from one side only usually means a configuration mistake on the
+other.
+
 Leave the router with `exit`. If SSH answers `Connection refused` or `Connection timed out`, or a check fails
 straight after the deploy, the router is still starting: wait 30 seconds and try again.
 
@@ -320,10 +334,13 @@ Checking lab xrd-pair
   PASS  xrd1 is running
   PASS  xrd2 is running
   PASS  xrd1 answers the CLI: IOS XR 7.11.2 LNT
+  PASS  ssh clab-xrd-pair-xrd1 logs in as clab with the lab password
+  PASS  ssh clab-xrd-pair-xrd2 logs in as clab with the lab password
   PASS  xrd1 GigabitEthernet0/0/0/0 is up
   PASS  xrd2 GigabitEthernet0/0/0/0 is up
   PASS  xrd1 sees xrd2 as an LLDP neighbour
   PASS  xrd1 pings xrd2 (10.0.12.1 -> 10.0.12.2), 100% success
+  PASS  xrd2 pings xrd1 (10.0.12.2 -> 10.0.12.1), 100% success
 
 All checks passed.
 ```

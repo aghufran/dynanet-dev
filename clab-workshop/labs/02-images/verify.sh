@@ -24,6 +24,24 @@ for n in xrd1 xrd2; do
     done
 done
 
+# Log in over SSH as a student would. The helper answers the password prompt, so no extra packages are needed.
+# IOS XR accepts one new SSH session per second, and its SSH server starts a little after the CLI answers,
+# so each login is retried for up to 2 minutes.
+askpass=$(mktemp); printf '#!/bin/sh\necho "clab@123"\n' > "$askpass"; chmod 700 "$askpass"
+for n in xrd1 xrd2; do
+    ok=no
+    for _ in $(seq 1 24); do
+        SSH_ASKPASS="$askpass" SSH_ASKPASS_REQUIRE=force timeout 30 \
+            ssh -o ConnectTimeout=10 -o PubkeyAuthentication=no "clab-$lab-$n" "show version" </dev/null 2>/dev/null \
+            | grep -q 'Cisco IOS XR Software' && { ok=yes; break; }
+        sleep 5
+    done
+    [[ $ok == yes ]] && pass "ssh clab-$lab-$n logs in as clab with the lab password" \
+        || fail "ssh clab-$lab-$n failed (check the login clab / clab@123 and that SSH is enabled in the startup config)"
+    sleep 1
+done
+rm -f -- "$askpass"
+
 ver=$(cli xrd1 "show version" | sed -n 's/^Cisco IOS XR Software, Version //p')
 [[ -n $ver ]] && pass "xrd1 answers the CLI: IOS XR $ver" || fail "xrd1 does not answer the CLI yet (wait a minute and retry)"
 
@@ -47,6 +65,13 @@ for _ in $(seq 1 12); do
     sleep 5
 done
 [[ $ok == yes ]] && pass "xrd1 pings xrd2 (10.0.12.1 -> 10.0.12.2), 100% success" || fail "xrd1 cannot ping xrd2 at 10.0.12.2"
+
+ok=no
+for _ in $(seq 1 12); do
+    cli xrd2 "ping 10.0.12.1 count 3" | grep -q 'Success rate is 100 percent' && { ok=yes; break; }
+    sleep 5
+done
+[[ $ok == yes ]] && pass "xrd2 pings xrd1 (10.0.12.2 -> 10.0.12.1), 100% success" || fail "xrd2 cannot ping xrd1 at 10.0.12.1"
 
 echo
 if (( fails == 0 )); then echo "All checks passed."; else echo "$fails check(s) failed."; exit 1; fi
