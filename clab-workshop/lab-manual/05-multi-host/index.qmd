@@ -132,8 +132,11 @@ effectively cabled together although they run on different hosts.
 To see the tunnel itself, watch the underlay while you ping. In one terminal:
 
 ```bash
-docker exec lab-host-1 tcpdump -ni eth0 udp port 4789
+docker exec lab-host-1 tcpdump -l -ni eth0 udp port 4789
 ```
+
+The `-l` makes tcpdump print each packet as it arrives. Without it, tcpdump started through `docker exec` holds its
+output back and appears to show nothing.
 
 In a second terminal, run step 5 again. The first terminal shows the packets between the hosts, wrapped in VXLAN:
 

@@ -269,8 +269,13 @@ first, wait 30 seconds and try again.
 | 3. Static route | on xrd1: `show route static` | `S    192.168.2.0/24 [1/0] via 10.0.12.2` |
 | 4. Host to host | `docker exec clab-routed-h1 ping -c 3 192.168.2.10` | `3 packets transmitted, 3 packets received, 0% packet loss` |
 | 5. Path | `docker exec clab-routed-h1 traceroute -n 192.168.2.10` | three hops: `192.168.1.1`, `10.0.12.2`, `192.168.2.10` |
+| 6. Router to far host | on xrd1: `ping 192.168.2.10 source 192.168.1.1` | `Success rate is 100 percent (5/5)` |
 
-For steps 2 and 3, log in with `ssh clab@clab-routed-xrd1` (password `clab@123`), and leave with `exit`.
+For steps 2, 3 and 6, log in with `ssh clab@clab-routed-xrd1` (password `clab@123`), and leave with `exit`.
+
+In step 6, a plain `ping 192.168.2.10` from xrd1 fails. A router uses the address of the interface a packet leaves
+through as the source, here `10.0.12.1`, and h2 has no route back to that network. With `source 192.168.1.1`, the
+address of the interface facing the hosts, h2 can reply.
 
 Or run all the checks at once from the lab folder:
 
@@ -291,6 +296,7 @@ Checking lab routed
   PASS  xrd1 has the static route to 192.168.2.0/24 installed
   PASS  xrd2 has the static route to 192.168.1.0/24 installed
   PASS  h1 pings h2 (192.168.1.10 -> 192.168.2.10), 0% loss
+  PASS  xrd1 pings h2 with source 192.168.1.1 (its host-facing address)
   PASS  h1 to h2 path is xrd1 -> xrd2 -> h2 (192.168.1.1 10.0.12.2 192.168.2.10)
 
 All checks passed.
@@ -307,7 +313,7 @@ The script waits for the routers to finish starting before it checks them. Any `
 | Draw the topology in your browser | Paste the file into the [topology viewer](https://graphs.dynanet.dev/topology) |
 | Draw a new or changed lab and get its topology file | Use the [topology designer](https://graphs.dynanet.dev/designer), then **Download .clab.yml** |
 | Draw the topology as a Mermaid diagram | `containerlab graph -t routed.clab.yml --mermaid` (writes `clab-routed/graph/routed.clab.mermaid`) |
-| Show the lab in a browser | `containerlab graph -t routed.clab.yml`, then open port 50080 on the host |
+| Show the lab in a browser | `containerlab graph -t routed.clab.yml`, then open port 50080 on the host. The command prints four addresses; only the first, the host's own network address, opens from another machine. The 172.x addresses are internal to the host |
 
 Without `--reconfigure`, a redeploy reuses the router storage already in the lab folder, so edits to a startup config
 do not take effect. `containerlab save` does not work with this lab: for XRd it needs NETCONF, which these

@@ -7,6 +7,7 @@ fail() { printf '  FAIL  %s\n' "$1"; fails=$((fails + 1)); }
 cli()  { docker exec "clab-$lab-$1" /pkg/bin/xr_cli "$2" 2>/dev/null; }
 
 echo "Checking lab $lab"
+command -v python3 >/dev/null || { echo "python3 is required by this script. Install it: sudo apt install -y python3"; exit 1; }
 # Management addresses as Containerlab reports them (works whatever network mode a node's container uses).
 mgmt=$(containerlab inspect -t "$(dirname "$0")/routed.clab.yml" --format json 2>/dev/null | python3 -c '
 import json, sys
@@ -53,6 +54,11 @@ for _ in $(seq 1 12); do
     sleep 5
 done
 [[ $ok == yes ]] && pass "h1 pings h2 (192.168.1.10 -> 192.168.2.10), 0% loss" || fail "h1 cannot ping h2 at 192.168.2.10"
+
+# A router pings from the address of the outgoing interface (10.0.12.x), which h2 has no route back to.
+# Giving the address of the interface facing the hosts as the source makes the ping work end to end.
+cli xrd1 "ping 192.168.2.10 source 192.168.1.1 count 3" | grep -q 'Success rate is 100 percent' \
+    && pass "xrd1 pings h2 with source 192.168.1.1 (its host-facing address)" || fail "xrd1 cannot ping h2 at 192.168.2.10 with source 192.168.1.1"
 
 path=$(docker exec clab-$lab-h1 traceroute -n -w 2 -m 5 192.168.2.10 2>/dev/null | awk 'NR>1 {print $2}' | paste -sd' ')
 [[ $path == "192.168.1.1 10.0.12.2 192.168.2.10" ]] \

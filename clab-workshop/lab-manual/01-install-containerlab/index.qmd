@@ -62,8 +62,13 @@ curl -sL https://containerlab.dev/setup | sudo -E bash -s "all"
 The script also raises the SSH server's maximum login attempts, which helps when you SSH into many lab nodes. To skip
 that change, run `export SETUP_SSHD="false"` first.
 
-Then log out and back in, so that your user's new groups (`docker` and `clab_admins`) take effect, and go to
-[Check the installation](#check-the-installation). If `id -nG` still does not list both groups, reboot.
+::: {.callout-important}
+**Log out and back in now.** Your user's new groups (`docker` and `clab_admins`) only apply to a new login session.
+Until then, `docker ps` fails with `permission denied`. After logging back in, run `id -nG`: the output must list
+both `docker` and `clab_admins`. If it does not, reboot.
+:::
+
+Then go to [Check the installation](#check-the-installation).
 
 The script is tested on Ubuntu up to 24.04. On Ubuntu 26.04, use Option B.
 
