@@ -60,9 +60,19 @@ done
 cli xrd1 "ping 192.168.2.10 source 192.168.1.1 count 3" | grep -q 'Success rate is 100 percent' \
     && pass "xrd1 pings h2 with source 192.168.1.1 (its host-facing address)" || fail "xrd1 cannot ping h2 at 192.168.2.10 with source 192.168.1.1"
 
+cli xrd2 "ping 192.168.1.10 source 192.168.2.1 count 3" | grep -q 'Success rate is 100 percent' \
+    && pass "xrd2 pings h1 with source 192.168.2.1 (its host-facing address)" || fail "xrd2 cannot ping h1 at 192.168.1.10 with source 192.168.2.1"
+
+docker exec clab-$lab-h2 ping -c 3 -W 2 192.168.1.10 2>/dev/null | grep -q ' 0% packet loss' \
+    && pass "h2 pings h1 (192.168.2.10 -> 192.168.1.10), 0% loss" || fail "h2 cannot ping h1 at 192.168.1.10"
+
 path=$(docker exec clab-$lab-h1 traceroute -n -w 2 -m 5 192.168.2.10 2>/dev/null | awk 'NR>1 {print $2}' | paste -sd' ')
 [[ $path == "192.168.1.1 10.0.12.2 192.168.2.10" ]] \
     && pass "h1 to h2 path is xrd1 -> xrd2 -> h2 ($path)" || fail "unexpected path from h1 to h2: $path"
+
+path=$(docker exec clab-$lab-h2 traceroute -n -w 2 -m 5 192.168.1.10 2>/dev/null | awk 'NR>1 {print $2}' | paste -sd' ')
+[[ $path == "192.168.2.1 10.0.12.1 192.168.1.10" ]] \
+    && pass "h2 to h1 path is xrd2 -> xrd1 -> h1 ($path)" || fail "unexpected path from h2 to h1: $path"
 
 echo
 if (( fails == 0 )); then echo "All checks passed."; else echo "$fails check(s) failed."; exit 1; fi

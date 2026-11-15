@@ -277,6 +277,29 @@ In step 6, a plain `ping 192.168.2.10` from xrd1 fails. A router uses the addres
 through as the source, here `10.0.12.1`, and h2 has no route back to that network. With `source 192.168.1.1`, the
 address of the interface facing the hosts, h2 can reply.
 
+Now check the far side from inside **xrd2** (`ssh clab@clab-routed-xrd2`, password `clab@123`):
+
+| Step | Command (on xrd2) | You should see |
+|---|---|---|
+| 7. Static route | `show route static` | `S    192.168.1.0/24 [1/0] via 10.0.12.1` |
+| 8. Router to far host | `ping 192.168.1.10 source 192.168.2.1` | `Success rate is 100 percent (5/5)` |
+
+Finally, check from inside the hosts, which is where an application would see the network. Open a shell in h1 with
+`docker exec -it clab-routed-h1 sh` and run:
+
+```bash
+ip -4 addr show eth1
+ip route
+ping -c 3 192.168.2.10
+traceroute -n 192.168.2.10
+```
+
+You should see `inet 192.168.1.10/24`, a route `192.168.2.0/24 via 192.168.1.1 dev eth1`, `0% packet loss`, and the
+three hops `192.168.1.1`, `10.0.12.2`, `192.168.2.10`. Type `exit`, then repeat in h2
+(`docker exec -it clab-routed-h2 sh`) with the mirrored values: `inet 192.168.2.10/24`,
+`192.168.1.0/24 via 192.168.2.1`, and a ping and traceroute to `192.168.1.10` with the hops `192.168.2.1`,
+`10.0.12.1`, `192.168.1.10`.
+
 Or run all the checks at once from the lab folder:
 
 ```bash
@@ -297,7 +320,10 @@ Checking lab routed
   PASS  xrd2 has the static route to 192.168.1.0/24 installed
   PASS  h1 pings h2 (192.168.1.10 -> 192.168.2.10), 0% loss
   PASS  xrd1 pings h2 with source 192.168.1.1 (its host-facing address)
+  PASS  xrd2 pings h1 with source 192.168.2.1 (its host-facing address)
+  PASS  h2 pings h1 (192.168.2.10 -> 192.168.1.10), 0% loss
   PASS  h1 to h2 path is xrd1 -> xrd2 -> h2 (192.168.1.1 10.0.12.2 192.168.2.10)
+  PASS  h2 to h1 path is xrd2 -> xrd1 -> h1 (192.168.2.1 10.0.12.1 192.168.1.10)
 
 All checks passed.
 ```
