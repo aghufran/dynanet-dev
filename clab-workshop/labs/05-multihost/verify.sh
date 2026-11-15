@@ -62,6 +62,12 @@ path=$(node lab-host-1 clab-site1-h1 traceroute -n -w 2 -m 5 192.168.2.10 | awk 
 [[ $path == "192.168.1.1 10.0.12.2 192.168.2.10" ]] \
     && pass "h1 to h2 path is xrd1 -> xrd2 -> h2 ($path)" || fail "unexpected path from h1 to h2: $path"
 
+# The tunnel must work in the other direction too.
+cli 2 "ping 10.0.12.1 count 3" | grep -q 'Success rate is 100 percent' \
+    && pass "xrd2 pings xrd1 across the VXLAN tunnel (10.0.12.2 -> 10.0.12.1)" || fail "xrd2 cannot reach xrd1 across the tunnel"
+node lab-host-2 clab-site2-h2 ping -c 3 -W 2 192.168.1.10 | grep -q ' 0% packet loss' \
+    && pass "h2 (lab-host-2) pings h1 (lab-host-1), 0% loss" || fail "h2 cannot ping h1 at 192.168.1.10"
+
 # Capture the underlay while pinging: the packets between the hosts must be VXLAN, VNI 100.
 docker exec -d lab-host-1 sh -c 'timeout 8 tcpdump -ni eth0 -c 4 udp port 4789 > /tmp/verify-vxlan.txt 2>&1'
 sleep 1; node lab-host-1 clab-site1-h1 ping -c 3 192.168.2.10 >/dev/null; sleep 3

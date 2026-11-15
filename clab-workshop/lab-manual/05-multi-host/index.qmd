@@ -145,7 +145,41 @@ IP 192.168.100.11.58443 > 192.168.100.12.4789: VXLAN, flags [I] (0x08), vni 100
 IP 192.168.100.12.58443 > 192.168.100.11.4789: VXLAN, flags [I] (0x08), vni 100
 ```
 
-Stop it with Ctrl-C. Or run all the checks at once:
+Stop it with Ctrl-C.
+
+### Verify from inside the lab hosts and nodes
+
+The checks above run from your machine through two layers of `docker exec`. To work the way you would on real
+equipment, go in one layer at a time. First open a shell on lab host 1:
+
+```bash
+docker exec -it lab-host-1 bash
+```
+
+You are now on lab host 1, with its own Docker and Containerlab. Run:
+
+```bash
+containerlab inspect --all
+ping -c 2 192.168.100.12
+ssh clab@clab-site1-xrd1
+```
+
+The first two repeat steps 3 and 2. The `ssh` logs in to xrd1 (password `clab@123`), because the node names resolve on
+the lab host. At the IOS XR prompt run `ping 10.0.12.2 count 3` (step 4) and `exit`. Then open the host inside
+site1 and run steps 5 and 6 from there:
+
+```bash
+docker exec -it clab-site1-h1 sh
+ping -c 3 192.168.2.10
+traceroute -n 192.168.2.10
+```
+
+Type `exit` to leave h1 and `exit` again to leave lab host 1. Do the same on lab host 2 (`docker exec -it lab-host-2 bash`,
+`ssh clab@clab-site2-xrd2`, `ping 10.0.12.1 count 3`, then `docker exec -it clab-site2-h2 sh` and a ping and
+traceroute to `192.168.1.10`, which should show the hops `192.168.2.1`, `10.0.12.1`, `192.168.1.10`). The tunnel must
+work in both directions.
+
+Or run all the checks at once:
 
 ```bash
 ./verify.sh
@@ -167,6 +201,8 @@ Checking the two-host lab
   PASS  xrd1 pings xrd2 across the VXLAN tunnel (10.0.12.1 -> 10.0.12.2)
   PASS  h1 (lab-host-1) pings h2 (lab-host-2), 0% loss
   PASS  h1 to h2 path is xrd1 -> xrd2 -> h2 (192.168.1.1 10.0.12.2 192.168.2.10)
+  PASS  xrd2 pings xrd1 across the VXLAN tunnel (10.0.12.2 -> 10.0.12.1)
+  PASS  h2 (lab-host-2) pings h1 (lab-host-1), 0% loss
   PASS  underlay carries the traffic as VXLAN, VNI 100, UDP 4789
   PASS  large packets (3000 bytes) cross the tunnel
 
