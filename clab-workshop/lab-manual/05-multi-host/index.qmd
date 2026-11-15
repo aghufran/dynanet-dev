@@ -18,13 +18,74 @@ on two separate machines or cloud VMs.
 
 ## The lab you will build
 
-```
- lab-host-1  192.168.100.11                       lab-host-2  192.168.100.12
- ┌──────────────────────────┐                     ┌──────────────────────────┐
- │  h1 ──── xrd1            │   VXLAN VNI 100     │            xrd2 ──── h2  │
- │            Gi0/0/0/1 ════╪═════ UDP 4789 ══════╪═ Gi0/0/0/1               │
- └──────────────────────────┘                     └──────────────────────────┘
-          underlay network  192.168.100.0/24
+```{=html}
+<figure style="margin: 1.2rem 0;">
+<svg viewBox="0 0 920 340" role="img" aria-label="Two lab hosts joined by an underlay network. On lab-host-1, h1 connects to xrd1. On lab-host-2, xrd2 connects to h2. A VXLAN tunnel joins xrd1 and xrd2 across the underlay." style="width:100%; height:auto; max-width:920px; font-family:inherit;">
+  <!-- lab host boxes -->
+  <g stroke="currentColor" stroke-width="2" fill="#e8eef4" fill-opacity="0.35" stroke-dasharray="7 5">
+    <rect x="20" y="20" width="340" height="200" rx="12"/>
+    <rect x="560" y="20" width="340" height="200" rx="12"/>
+  </g>
+  <!-- underlay bus and stubs -->
+  <g stroke="currentColor" stroke-width="3" fill="none">
+    <line x1="190" y1="220" x2="190" y2="285"/>
+    <line x1="730" y1="220" x2="730" y2="285"/>
+    <line x1="110" y1="285" x2="810" y2="285"/>
+  </g>
+  <!-- links inside the sites -->
+  <g stroke="currentColor" stroke-width="2" fill="none">
+    <line x1="110" y1="120" x2="234" y2="120"/>
+    <line x1="686" y1="120" x2="810" y2="120"/>
+  </g>
+  <!-- VXLAN tunnel between the routers -->
+  <line x1="306" y1="120" x2="614" y2="120" stroke="#e08a1e" stroke-width="5" stroke-dasharray="12 7"/>
+  <!-- hosts -->
+  <g stroke="currentColor" stroke-width="2" fill="#e8eef4" fill-opacity="0.9">
+    <rect x="40" y="95" width="70" height="50" rx="8"/>
+    <rect x="810" y="95" width="70" height="50" rx="8"/>
+  </g>
+  <!-- routers -->
+  <g stroke="currentColor" stroke-width="2">
+    <circle cx="270" cy="120" r="36" fill="#4a90d9"/>
+    <circle cx="650" cy="120" r="36" fill="#4a90d9"/>
+  </g>
+  <g stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M253 113h34M281 105l8 8-8 8"/>
+    <path d="M287 129h-34M259 121l-8 8 8 8"/>
+    <path d="M633 113h34M661 105l8 8-8 8"/>
+    <path d="M667 129h-34M639 121l-8 8 8 8"/>
+  </g>
+  <g fill="#1b2733" font-size="16" font-weight="600" text-anchor="middle">
+    <text x="75" y="125">h1</text>
+    <text x="845" y="125">h2</text>
+  </g>
+  <g fill="currentColor" font-size="16" font-weight="600" text-anchor="middle">
+    <text x="270" y="177">xrd1</text>
+    <text x="650" y="177">xrd2</text>
+  </g>
+  <g fill="currentColor" font-size="14" font-weight="700">
+    <text x="36" y="46">lab-host-1</text>
+    <text x="576" y="46">lab-host-2</text>
+  </g>
+  <g fill="currentColor" font-size="13" text-anchor="middle">
+    <text x="75" y="162">Alpine host</text>
+    <text x="845" y="162">Alpine host</text>
+    <text x="270" y="195">Cisco XRd router</text>
+    <text x="650" y="195">Cisco XRd router</text>
+    <text x="172" y="108">192.168.1.0/24</text>
+    <text x="748" y="108">192.168.2.0/24</text>
+    <text x="460" y="82" font-weight="700">VXLAN tunnel, VNI 100</text>
+    <text x="460" y="100">UDP port 4789</text>
+    <text x="460" y="148">10.0.12.0/30</text>
+    <text x="460" y="166" font-size="12">Gi0/0/0/1 on both</text>
+    <text x="198" y="245" text-anchor="start">192.168.100.11</text>
+    <text x="738" y="245" text-anchor="start">192.168.100.12</text>
+    <text x="460" y="309" font-weight="700">Underlay network 192.168.100.0/24</text>
+    <text x="460" y="327" font-size="12">a Docker network here, the VPC in the cloud</text>
+  </g>
+</svg>
+<figcaption style="font-size:0.9rem; text-align:center;">Each lab host runs half of the routed lab from Part 3. The two routers are joined by a VXLAN tunnel (orange) that travels across the underlay network between the hosts.</figcaption>
+</figure>
 ```
 
 | Host | Address | Lab | Nodes |
