@@ -40,6 +40,7 @@ version. A topology file refers to an image by exactly this name, so pick clear 
 | Give an image another name | `docker tag <old name> <new name>` |
 | Remove an image | `docker rmi <name>` |
 | Show disk used by images | `docker system df` |
+| Load an image from a saved file | `docker load -i <file>` |
 
 When you deploy a lab, Containerlab uses the local image if it exists and tries to pull it from a registry if it does
 not. Pulling only works for public images, so vendor images must be loaded before you deploy.
@@ -61,6 +62,7 @@ The image is small: `docker images` reports 8 to 13 MB, depending on the Docker 
 | Setting | Value |
 |---|---|
 | Containerlab kind | `linux` |
+| Containerlab documentation | [Linux container kind](https://containerlab.dev/manual/kinds/linux/) |
 | Login | none: open a shell with `docker exec` (Part 4) |
 | Interface names in the topology | `eth1`, `eth2`, … |
 | Memory per node | a few MB |
@@ -88,6 +90,7 @@ cEOS ships as a file system archive, not a saved image, which is why it uses `do
 | Setting | Value |
 |---|---|
 | Containerlab kind | `arista_ceos` |
+| Containerlab documentation | [Arista cEOS kind](https://containerlab.dev/manual/kinds/ceos/) |
 | Login | `admin` / `admin` |
 | Interface names in the topology | `eth1`, `eth2`, … |
 
@@ -118,6 +121,9 @@ image is the one for labs; the vRouter image is for forwarding performance and n
    docker load -i xrd/xrd-control-plane-container-x64.dockerv1.tgz
    ```
 
+   Here `xrd` is the folder you created in step 2, where the image file was unpacked. Run the command from the folder
+   that contains `xrd`. If you unpacked the archive somewhere else, replace `xrd/` with the path to that folder.
+
 4. Check the name. Release 7.11.2 loads as `ios-xr/xrd-control-plane:7.11.2`, which is the name the workshop labs
    use, so there is nothing to change:
 
@@ -138,7 +144,12 @@ version and change the `image:` lines in the lab topology files to match.
 
 ### Prepare the host
 
-XRd opens many file watches. Raise the Linux limits once, permanently:
+**Advisory.** Cisco recommends raising two Linux limits before you run XRd, because XRd needs far more inotify
+resources than the defaults give. inotify is the Linux feature that lets a program be told when a file changes, and
+the limits are shared by every container on the host. Containerlab's
+[XRd page](https://containerlab.dev/manual/kinds/xrd/#getting-xrd) gives the same advice and adds that with 10 or more
+XRd nodes you may need to raise them further. If you skip this, routers can fail to start, or restart repeatedly, and
+the XRd boot log shows inotify errors. Raise the limits once on the lab host, permanently:
 
 ```bash
 sudo tee /etc/sysctl.d/90-xrd.conf > /dev/null <<'EOF'
@@ -148,6 +159,13 @@ EOF
 sudo sysctl --system
 ```
 
+The first command makes the change survive a reboot, and `sysctl --system` applies it now. Check that the settings
+are active; the output should show 64000 and 131072:
+
+```bash
+sysctl fs.inotify.max_user_instances fs.inotify.max_user_watches
+```
+
 These values run a 15-router XRd lab on the workshop host. Cisco's
 [xrd-tools](https://github.com/ios-xr/xrd-tools) repository has a `host-check` script that tests a host for XRd:
 run `scripts/host-check -p xrd-control-plane -e docker` from a clone of it.
@@ -155,6 +173,7 @@ run `scripts/host-check -p xrd-control-plane -e docker` from a clone of it.
 | Setting | Value |
 |---|---|
 | Containerlab kind | `cisco_xrd` |
+| Containerlab documentation | [Cisco XRd kind](https://containerlab.dev/manual/kinds/xrd/) |
 | Login | `clab` / `clab@123` |
 | Interface names in the topology | `Gi0-0-0-0`, `Gi0-0-0-1`, … (IOS XR `GigabitEthernet0/0/0/0`, …) |
 | Memory per node | about 1.6 GB in the workshop labs; allow 2.5 GB for routers that run routing protocols |
@@ -211,6 +230,7 @@ use it in your topology.
 | Setting (Catalyst 8000V) | Value |
 |---|---|
 | Containerlab kind | `cisco_c8000v` |
+| Containerlab documentation | [Cisco Catalyst 8000V kind](https://containerlab.dev/manual/kinds/vr-c8000v/) and [vrnetlab](https://containerlab.dev/manual/vrnetlab/) |
 | Login | `admin` / `admin` |
 | Resources per node | 1 vCPU and 4 GB by default |
 | Boot time | about 5 minutes; watch with `docker logs -f <container>` |

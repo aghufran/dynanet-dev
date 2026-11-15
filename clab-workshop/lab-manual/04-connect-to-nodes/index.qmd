@@ -72,6 +72,10 @@ Every node is a container, so `docker exec` runs a program inside it. Add `-it` 
 | Cisco XRd | `docker exec -it clab-routed-xrd1 /pkg/bin/xr_cli.sh` | the IOS XR CLI, after you log in as `clab` |
 | Arista cEOS | `docker exec -it <node> Cli` | the EOS CLI |
 
+In these labs the XRd startup configurations define the user `clab`, so `xr_cli.sh` asks you to log in with `clab` /
+`clab@123`. Containerlab's [XRd page](https://containerlab.dev/manual/kinds/xrd/) shows the same command without a
+password; which of the two you get depends on the node's startup configuration.
+
 Without `-it` you can run a single command and get its output, which is handy in scripts:
 
 ```bash
