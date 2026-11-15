@@ -35,6 +35,10 @@ docker exec clab-$lab-xrd1 /pkg/bin/xr_cli "show version" 2>/dev/null | grep -q 
 n=$(containerlab exec -t "$topo" --label clab-node-kind=cisco_xrd --cmd '/pkg/bin/xr_cli "show version"' 2>&1 | grep -c 'Cisco IOS XR Software')
 [[ $n -eq 2 ]] && pass "containerlab exec ran on both routers" || fail "containerlab exec reached $n of 2 routers"
 
+# 3b. From inside a node: a host reaches a router's management address
+docker exec clab-$lab-h1 ping -c 3 -W 2 172.20.20.11 2>/dev/null | grep -q ' 0% packet loss' \
+    && pass "h1 reaches xrd1's management address 172.20.20.11 from inside the lab" || fail "h1 cannot reach xrd1 at 172.20.20.11"
+
 # 4. SSH by name. XRd logs you in as clab with the password clab@123; the helper below answers the
 #    password prompt so this check needs no extra packages.
 #    IOS XR accepts one new SSH session per second, so the SSH checks pause briefly between logins.

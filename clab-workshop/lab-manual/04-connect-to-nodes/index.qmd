@@ -226,14 +226,17 @@ Run each check on the lab host.
 | Step | Command | You should see |
 |---|---|---|
 | 1. Names | `grep clab-routed /etc/hosts` | a line for each of `clab-routed-xrd1`, `-xrd2`, `-h1` and `-h2` with its 172.20.20.x address (plus a second line each with an IPv6 address on some hosts) |
-| 2. SSH by name | `ssh clab-routed-xrd1`, then `show version`, then `exit` | a password prompt, the IOS XR prompt, then `Cisco IOS XR Software, Version 7.11.2` |
+| 2. SSH by name | `ssh clab-routed-xrd1` (then the same with `xrd2`), then `show version`, then `exit` | a password prompt, the IOS XR prompt, then `Cisco IOS XR Software, Version 7.11.2` |
 | 3. docker exec | `docker exec clab-routed-h1 hostname` | `h1` |
+| 3a. Shell on a host | `docker exec -it clab-routed-h1 sh`, then `hostname`, then `exit` | the prompt `/ #` and `h1` |
+| 3b. CLI on a router | `docker exec -it clab-routed-xrd1 /pkg/bin/xr_cli.sh`, log in as `clab` / `clab@123`, then `show version`, then `exit` | the IOS XR prompt, then `Cisco IOS XR Software, Version 7.11.2` |
 | 4. containerlab exec | `containerlab exec -t routed.clab.yml --label clab-node-kind=cisco_xrd --cmd '/pkg/bin/xr_cli "show version"'` | a `Cisco IOS XR Software` line for each of xrd1 and xrd2 |
 | 5. Inventories | `ls clab-routed/` | `ansible-inventory.yml`, `nornir-simple-inventory.yml` and `topology-data.json` among the files |
 | 6. Python | `~/clab-venv/bin/python ../04-connect/show_version.py clab-routed/topology-data.json` | one line each for xrd1 and xrd2 with the IOS XR version |
-| 7. From your laptop | `ssh -J you@labhost clab@clab-routed-xrd1` | the IOS XR prompt after both passwords |
+| 7. Management network from inside a node | `docker exec clab-routed-h1 ping -c 3 172.20.20.11` | `0% packet loss`: h1 reaches xrd1's management address from inside the lab |
+| 8. From your laptop | `ssh -J you@labhost clab@clab-routed-xrd1` | the IOS XR prompt after both passwords |
 
-Or run steps 1 to 6 at once from `labs/04-connect`. `PYTHON` tells the script which Python has Netmiko:
+Or run steps 1 to 7 at once from `labs/04-connect`. `PYTHON` tells the script which Python has Netmiko:
 
 ```bash
 cd ../04-connect
@@ -246,6 +249,7 @@ Checking connection methods on lab routed
   PASS  docker exec opens a shell on h1
   PASS  docker exec runs the IOS XR CLI on xrd1
   PASS  containerlab exec ran on both routers
+  PASS  h1 reaches xrd1's management address 172.20.20.11 from inside the lab
   PASS  ssh clab-routed-xrd1 logs in as clab with the lab password
   PASS  ssh clab-routed-xrd2 logs in as clab with the lab password
   PASS  lab folder has ansible-inventory.yml
@@ -257,7 +261,7 @@ All checks passed.
 ```
 
 The script types the lab password for you in the SSH checks. `SKIP` means a check could not run on your setup, such
-as having no Netmiko; it is not a failure. Step 7 runs on your laptop, so the script cannot check it.
+as having no Netmiko; it is not a failure. Step 8 runs on your laptop, so the script cannot check it.
 
 ## Remove the lab
 
