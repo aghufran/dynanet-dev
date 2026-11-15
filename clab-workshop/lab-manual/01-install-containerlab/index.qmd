@@ -208,6 +208,26 @@ All checks passed.
 
 Any `FAIL` line says which check failed. If every check passes, Containerlab is installed and working.
 
+### Verify from inside a node
+
+The checks above run from the host. You can also run them from inside a node, the way you would on a real device.
+Open a shell in n1:
+
+```bash
+docker exec -it clab-first-lab-n1 sh
+```
+
+The prompt changes to `/ #`, which means you are now inside n1. Run steps 2 and 4 there:
+
+```bash
+ip -4 addr show eth1
+ping -c 3 10.0.12.2
+```
+
+You should see the same results as before: `inet 10.0.12.1/30`, and `3 packets transmitted, 3 packets received,
+0% packet loss`. Type `exit` to go back to the host. To check n2 the same way, open a shell with
+`docker exec -it clab-first-lab-n2 sh`, expect `inet 10.0.12.2/30`, and ping `10.0.12.1`.
+
 ### Remove the lab
 
 ```bash
