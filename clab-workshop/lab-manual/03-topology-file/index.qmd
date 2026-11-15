@@ -17,10 +17,59 @@ verify that the hosts can reach each other through both routers. It assumes you 
 
 ## The lab you will build
 
+```{=html}
+<figure style="margin: 1.2rem 0;">
+<svg viewBox="0 0 800 210" role="img" aria-label="Network diagram: host h1, routers xrd1 and xrd2, host h2, connected in a line" style="width:100%; height:auto; max-width:800px; font-family:inherit;">
+  <g stroke="currentColor" stroke-width="2" fill="none">
+    <line x1="135" y1="95" x2="265" y2="95"/>
+    <line x1="335" y1="95" x2="465" y2="95"/>
+    <line x1="535" y1="95" x2="665" y2="95"/>
+  </g>
+  <!-- hosts -->
+  <g stroke="currentColor" stroke-width="2">
+    <rect x="35" y="70" width="100" height="50" rx="8" fill="#e8eef4" fill-opacity="0.9"/>
+    <rect x="665" y="70" width="100" height="50" rx="8" fill="#e8eef4" fill-opacity="0.9"/>
+  </g>
+  <!-- routers -->
+  <g stroke="currentColor" stroke-width="2">
+    <circle cx="300" cy="95" r="38" fill="#4a90d9"/>
+    <circle cx="500" cy="95" r="38" fill="#4a90d9"/>
+  </g>
+  <!-- router arrows -->
+  <g stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M282 88h36M312 80l8 8-8 8"/>
+    <path d="M318 104h-36M288 96l-8 8 8 8"/>
+    <path d="M482 88h36M512 80l8 8-8 8"/>
+    <path d="M518 104h-36M488 96l-8 8 8 8"/>
+  </g>
+  <g fill="#1b2733" font-size="17" font-weight="600" text-anchor="middle">
+    <text x="85" y="101">h1</text>
+    <text x="715" y="101">h2</text>
+  </g>
+  <g fill="currentColor" font-size="17" font-weight="600" text-anchor="middle">
+    <text x="300" y="155">xrd1</text>
+    <text x="500" y="155">xrd2</text>
+  </g>
+  <g fill="currentColor" font-size="13" text-anchor="middle">
+    <text x="85" y="140">Alpine host</text>
+    <text x="715" y="140">Alpine host</text>
+    <text x="300" y="173">Cisco XRd router</text>
+    <text x="500" y="173">Cisco XRd router</text>
+    <text x="200" y="80">192.168.1.0/24</text>
+    <text x="400" y="80">10.0.12.0/30</text>
+    <text x="600" y="80">192.168.2.0/24</text>
+    <text x="200" y="118">.10 &#8212; .1</text>
+    <text x="400" y="118">.1 &#8212; .2</text>
+    <text x="600" y="118">.1 &#8212; .10</text>
+  </g>
+</svg>
+<figcaption style="font-size:0.9rem; text-align:center;">Two routers with a host on each side. The labels on the links are the subnets and the last number of each end's address.</figcaption>
+</figure>
 ```
-  h1 ─────────── xrd1 ─────────── xrd2 ─────────── h2
-     192.168.1.0/24    10.0.12.0/30    192.168.2.0/24
-```
+
+To see the lab drawn by the same tool you will use for your own files, open it in the
+[Topology Viewer](https://graphs.dynanet.dev/topology?example=routed). Hover over a node for its kind, image and
+management address.
 
 | Node | Kind | Management address | Data addresses |
 |---|---|---|---|
