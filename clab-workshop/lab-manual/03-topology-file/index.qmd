@@ -411,6 +411,18 @@ Without `--reconfigure`, a redeploy reuses the router storage already in the lab
 do not take effect. `containerlab save` does not work with this lab: for XRd it needs NETCONF, which these
 configurations do not turn on.
 
+The last two rows use the same command, [`containerlab graph`](https://containerlab.dev/cmd/graph/), in two ways.
+With `--mermaid` it writes a diagram as a text file and stops. Without it, it starts a small web server that keeps
+running until you press Ctrl-C, and shows the lab as an interactive diagram in your browser. They are independent
+and optional: you do not need one to use the other.
+
+**What is Mermaid?** [Mermaid](https://mermaid.js.org/) is a simple text language for describing diagrams. You write
+the nodes and the links between them as plain text, and a viewer turns the text into a picture. Because the diagram is
+text, you can keep it in Git next to the topology file and see what changed between versions. GitHub and GitLab draw
+Mermaid files in their pages automatically, and you can paste one into the
+[Mermaid live editor](https://mermaid.live/) to see it, edit it and export it as an image. The
+[Mermaid documentation](https://mermaid.js.org/intro/) explains the syntax.
+
 ## Remove the lab
 
 ```bash
