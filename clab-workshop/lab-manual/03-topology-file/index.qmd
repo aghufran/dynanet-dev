@@ -253,6 +253,20 @@ A link can also connect a node to the host itself, which is useful for reaching 
       host-interface: xrd1-host
 ```
 
+| Line | What it does |
+|---|---|
+| `links:` | Starts the list of links. This is the same `links:` list that holds the cables between nodes, so a host link is one more item in it. |
+| `- type: host` | Says this link is a host link: one end is a node, the other end is the lab host itself. Without `type`, a link is a normal cable between two nodes. |
+| `endpoint:` | Describes the node end of the link. |
+| `node: xrd1` | The node whose interface is connected to the host. It must be a node defined in the `nodes:` section. |
+| `interface: Gi0-0-0-2` | The interface on xrd1 that the link plugs into. It uses the XRd interface naming (`Gi0-0-0-N`). In this lab `Gi0-0-0-0` and `Gi0-0-0-1` are already used, so this is the next free one. |
+| `host-interface: xrd1-host` | The name of the interface that Containerlab creates on the lab host for the other end of the link. You see it on the host with `ip link show xrd1-host`, and can give it an address, add routes to it or attach it to a bridge. |
+
+Containerlab joins the two interfaces with a virtual cable, so traffic that enters `xrd1-host` on the lab host comes
+out of `Gi0-0-0-2` on xrd1, and the other way round. The interface still needs an address on both ends before the
+two can talk. The [Containerlab network documentation](https://containerlab.dev/manual/network/) covers host links
+and the other link types.
+
 ### Management network
 
 Every node gets a management interface on a Docker network called `clab`, 172.20.20.0/24 by default, and an entry in
