@@ -226,7 +226,9 @@ the `docker exec` commands from the table now:
 | 2. Address on n1 | `ip -4 addr show eth1` | `inet 10.0.12.1/30` |
 | 4. Reachability | `ping -c 3 10.0.12.2` | `3 packets transmitted, 3 packets received, 0% packet loss` |
 
-Type `exit` to go back to the host. Now do the same checks from inside n2. Open a shell in it:
+Type `exit` to go back to the host.
+
+Now do the same checks from inside n2. Open a shell in it:
 
 ```bash
 docker exec -it clab-first-lab-n2 sh
