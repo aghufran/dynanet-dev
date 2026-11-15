@@ -348,20 +348,23 @@ Now check the far side from inside **xrd2** (`ssh clab@clab-routed-xrd2`, passwo
 | 8. Router to far host | `ping 192.168.1.10 source 192.168.2.1` | `Success rate is 100 percent (5/5)` |
 
 Finally, check from inside the hosts, which is where an application would see the network. Open a shell in h1 with
-`docker exec -it clab-routed-h1 sh` and run:
+`docker exec -it clab-routed-h1 sh` and run these commands:
 
-```bash
-ip -4 addr show eth1
-ip route
-ping -c 3 192.168.2.10
-traceroute -n 192.168.2.10
-```
+| Command (inside h1) | Result |
+|---|---|
+| `ip -4 addr show eth1` | `inet 192.168.1.10/24` |
+| `ip route` | a route `192.168.2.0/24 via 192.168.1.1 dev eth1` |
+| `ping -c 3 192.168.2.10` | `0% packet loss` |
+| `traceroute -n 192.168.2.10` | three hops: `192.168.1.1`, `10.0.12.2`, `192.168.2.10` |
 
-You should see `inet 192.168.1.10/24`, a route `192.168.2.0/24 via 192.168.1.1 dev eth1`, `0% packet loss`, and the
-three hops `192.168.1.1`, `10.0.12.2`, `192.168.2.10`. Type `exit`, then repeat in h2
-(`docker exec -it clab-routed-h2 sh`) with the mirrored values: `inet 192.168.2.10/24`,
-`192.168.1.0/24 via 192.168.2.1`, and a ping and traceroute to `192.168.1.10` with the hops `192.168.2.1`,
-`10.0.12.1`, `192.168.1.10`.
+Type `exit`, then repeat in h2 with `docker exec -it clab-routed-h2 sh`. The values are mirrored:
+
+| Command (inside h2) | Result |
+|---|---|
+| `ip -4 addr show eth1` | `inet 192.168.2.10/24` |
+| `ip route` | a route `192.168.1.0/24 via 192.168.2.1 dev eth1` |
+| `ping -c 3 192.168.1.10` | `0% packet loss` |
+| `traceroute -n 192.168.1.10` | three hops: `192.168.2.1`, `10.0.12.1`, `192.168.1.10` |
 
 Or run all the checks at once from the lab folder:
 
